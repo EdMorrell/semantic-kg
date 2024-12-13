@@ -70,7 +70,7 @@ class EdgeAdditionPerturbation(BasePerturbation):
         node_name_id : str
             The ID field of the node in the graph
         valid_edges : Optional[list[str]], optional
-            A list of valid edges, if none set then all edges vali, by
+            A list of valid edges, if none set then all edges valid, by
             default None.
         edge_attribute_mapper : Optional[EdgeAttributeMapper], optional
             An optional object to use for generating edge attributes,
@@ -319,7 +319,6 @@ class GraphPerturber:
     def perturb(
         self, graph: nx.Graph, n_perturbations: int, max_retries: Optional[int] = None
     ) -> nx.Graph:
-
         p_graph = nx.Graph(graph)
 
         if not max_retries:
