@@ -17,6 +17,7 @@ def parse_args() -> argparse.Namespace:
         "--node_dpath",
         type=str,
         help="Path to PrimeKG nodes CSV file",
+        # TODO: Make path relative to repo
         default="~/Downloads/dataverse_files/nodes.csv",
     )
     parser.add_argument(
@@ -29,7 +30,7 @@ def parse_args() -> argparse.Namespace:
         "--n_iter",
         type=int,
         help="Number of subgraphs to include in final dataset",
-        default=1,
+        default=500,
     )
     parser.add_argument(
         "--max_neighbors",
@@ -37,13 +38,38 @@ def parse_args() -> argparse.Namespace:
         help="Maximum number of neighbors per node in subgraph",
         default=3,
     )
-    # TODO: Look into including other node-types as start nodu
-    parser.add_argument("--start_node_types", nargs="*", type=str, default=["disease"])
+    parser.add_argument(
+        "--start_node_types", nargs="*", type=str, default=["drug", "disease"]
+    )
     parser.add_argument(
         "--save_path",
         type=str,
         help="Path to save final dataset",
-        default="outputs/prime_kg/",
+        default="datasets/prime_kg/",
+    )
+    parser.add_argument(
+        "--min_nodes",
+        type=int,
+        help="Minimum number of nodes per subgraph",
+        required=False,
+    )
+    parser.add_argument(
+        "--max_nodes",
+        type=int,
+        help="Maximum number of nodes per subgraph",
+        required=False,
+    )
+    parser.add_argument(
+        "--min_p_perturb",
+        type=float,
+        help="Minimum number of perturbations expressed as a proportion of total nodes",
+        required=False,
+    )
+    parser.add_argument(
+        "--max_p_perturb",
+        type=float,
+        help="Maximum number of perturbations expressed as a proportion of total nodes",
+        required=False,
     )
     parser.add_argument(
         "--random_seed", type=int, help="Random seed for generation", default=42
@@ -58,8 +84,13 @@ def main(
     n_iter: int,
     max_neighbors: int,
     save_path: Path,
+    min_nodes: int = 3,
+    max_nodes: int = 12,
+    min_p_perturb: float = 0.1,
+    max_p_perturb: float = 0.7,
     start_node_types: Optional[list[str]] = None,
 ) -> None:
+    """Generates a dataset of subgraphs and perturbed subgraphs"""
     node_df = pd.read_csv(node_dpath)
     edge_df = pd.read_csv(edge_dpath)
 
@@ -94,9 +125,11 @@ def main(
         perturber=perturber,
         node_name_field="node_name",
         edge_name_field="display_relation",
+        n_node_range=(min_nodes, max_nodes),
+        p_perturbation_range=(min_p_perturb, max_p_perturb),
         max_neighbors=max_neighbors,
         start_node_attrs=start_node_attrs,
-        save_dir=save_path,
+        dataset_save_dir=save_path,
     )
     subgraph_dataset.generate(n_iter=n_iter)
 
@@ -111,10 +144,21 @@ if __name__ == "__main__":
     random.seed(args.random_seed)
     np.random.seed(args.random_seed)
 
+    kwargs = {}
+    if args.min_nodes is not None:
+        kwargs["min_nodes"] = args.min_nodes
+    if args.max_nodes is not None:
+        kwargs["max_nodes"] = args.max_nodes
+    if args.min_p_perturb is not None:
+        kwargs["min_p_perturb"] = args.min_p_perturb
+    if args.max_p_perturb is not None:
+        kwargs["max_p_perturb"] = args.max_p_perturb
+
     main(
         node_dpath=args.node_dpath,
         edge_dpath=args.edge_dpath,
         n_iter=args.n_iter,
         max_neighbors=args.max_neighbors,
         save_path=save_path,
+        **kwargs,
     )
