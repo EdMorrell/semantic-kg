@@ -1,3 +1,4 @@
+import pickle
 import hashlib
 from pathlib import Path
 import random
@@ -7,8 +8,9 @@ from collections import deque
 import numpy as np
 import networkx as nx
 import pandas as pd
+from tqdm import tqdm
 
-from semantic_kg.perturbation import GraphPerturber
+from semantic_kg.perturbation import GraphPerturber, NoValidEdgeError
 
 
 def bfs(
@@ -127,6 +129,9 @@ def bfs_node_diversity(
         )
 
         for edge in edges:
+            # Convert to int
+            edge = edge.item()
+
             if edge not in visited:
                 visited.add(edge)
                 queue.append(edge)
@@ -182,12 +187,12 @@ class SubgraphSampler:
 
         Parameters
         ----------
-            n_nodes (int): Number of nodes to sample.
-            start_node (Optional[str | int], optional): Starting node for sampling.
-            Defaults to None.
-            max_neighbors (int, optional): Maximum number of neighbors to consider for
-            each node. Defaults to 5.
-            **kwargs: Additional keyword arguments.
+        n_nodes (int): Number of nodes to sample.
+        start_node (Optional[str | int], optional): Starting node for sampling.
+        Defaults to None.
+        max_neighbors (int, optional): Maximum number of neighbors to consider for
+        each node. Defaults to 5.
+        **kwargs: Additional keyword arguments.
 
         Returns
         -------
@@ -287,11 +292,13 @@ class SubgraphDataset:
         perturber: GraphPerturber,
         node_name_field: str,
         edge_name_field: str,
-        n_node_range: tuple[int, int] = (2, 10),
+        n_node_range: tuple[int, int] = (3, 12),
         p_perturbation_range: tuple[float, float] = (0.1, 0.7),
         max_neighbors: int = 3,
         start_node_attrs: Optional[dict[str, str]] = None,
-        save_dir: Optional[Path] = None,
+        dataset_save_dir: Optional[Path] = None,
+        save_subgraphs: bool = True,
+        subgraph_save_dir: Optional[Path] = None,
     ) -> None:
         """Class to generate a dataset of subgraphs and perturbed subgraphs
 
@@ -310,16 +317,21 @@ class SubgraphDataset:
         n_node_range : tuple[int, int], optional
             The range of number of nodes for the sampled subgraphs. Default is (2, 10).
         p_perturbation_range : tuple[float, float], optional
-            The range of perturbation probabilities for the perturbed subgraphs.
-            Default is (0.1, 0.7).
+            Range of fraction of total nodes to perturb. Default is (0.1, 0.7).
         max_neighbors : int, optional
             The maximum number of neighbors to consider when sampling subgraphs.
             Default is 3.
         start_node_attrs : Optional[dict[str, str]], optional
             The attributes of the start node for the sampled subgraphs.
             Default is None.
-        save_dir : Optional[Path], optional
-            The directory to save the generated dataset. If not provided, a default
+        dataset_save_dir : Optional[Path], optional
+            The directory to save the final dataset. If not provided, a default
+            directory will be used.
+        save_subgraphs : bool, optional
+            If True, then saves intermediate subgraph objects. Defaults to True.
+            NOTE: Objects saved as pickle files making saving very slow
+        subgraph_save_dir : Optional[Path], optional
+            The directory to save each generated subgraph. If not provided, a default
             directory will be used.
         """
         self.graph = graph
@@ -331,11 +343,19 @@ class SubgraphDataset:
         self.p_perturbation_range = p_perturbation_range
         self.max_neighbors = max_neighbors
         self.start_node_attrs = start_node_attrs
-        if not save_dir:
-            root_dir = Path(__file__).parent.parent
-            save_dir = Path(root_dir) / "outputs"
-            save_dir.mkdir(parents=True, exist_ok=True)
-        self.save_dir = save_dir
+
+        # Configure save directories
+        root_dir = Path(__file__).parent.parent
+        if not dataset_save_dir:
+            dataset_save_dir = Path(root_dir) / "datasets"
+            dataset_save_dir.mkdir(parents=True, exist_ok=True)
+        self.dataset_save_dir = dataset_save_dir
+
+        self.save_subgraphs = save_subgraphs
+        if not subgraph_save_dir and self.save_subgraphs:
+            subgraph_save_dir = Path(root_dir) / "outputs"
+            subgraph_save_dir.mkdir(parents=True, exist_ok=True)
+        self.subgraph_save_dir = subgraph_save_dir
 
     def _sample_start_node(self) -> int | str:
         all_nodes = list(self.graph.nodes)
@@ -359,20 +379,40 @@ class SubgraphDataset:
 
         return random.choice(valid_nodes)
 
-    def _save_subgraph(self, subgraph: nx.Graph) -> Path:
-        """Saves the subgraph under a unique hash"""
-        graph_hash = nx.weisfeiler_lehman_graph_hash(subgraph)
-        save_path = self.save_dir / f"{graph_hash}.adjlist"  # type: ignore
-        nx.write_adjlist(subgraph, str(save_path))
+    def _get_graph_hash(self, subgraph: nx.Graph) -> str:
+        return nx.weisfeiler_lehman_graph_hash(
+            subgraph, edge_attr=self.edge_name_field, node_attr=self.node_name_field
+        )
 
-        return save_path
+    def _save_subgraph(self, subgraph: nx.Graph, save_path: Path) -> None:
+        """Saves the subgraph under a unique hash"""
+        if not save_path.is_file():
+            with open(str(save_path), "wb") as f:
+                pickle.dump(subgraph, f)
+
+    def _save_subgraphs(
+        self,
+        subgraph: nx.Graph,
+        perturbed_subgraph: nx.Graph,
+        subgraph_hash: str,
+        perturbed_subgraph_hash: str,
+    ) -> None:
+        """Save the subgraphs to the specified directory"""
+        if self.subgraph_save_dir:  # Necessary to avoid type-error
+            subgraph_save_path = self.subgraph_save_dir / f"{subgraph_hash}.pkl"
+            perturbed_subgraph_save_path = (
+                self.subgraph_save_dir / f"{perturbed_subgraph_hash}.pkl"
+            )
+            self._save_subgraph(subgraph, subgraph_save_path)
+            self._save_subgraph(perturbed_subgraph, perturbed_subgraph_save_path)
 
     def _format_row_data(
         self,
         subgraph: nx.Graph,
         perturbed_subgraph: nx.Graph,
-        subgraph_path: Path,
-        perturbed_subgraph_path: Path,
+        perturbation_log: list[dict[str, Any]],
+        subgraph_hash: str,
+        perturbed_subgraph_hash: str,
     ) -> dict[str, Any]:
         """Formats data for a subgraph-pair into a dictionary"""
         subgraph_triples = generate_triples(
@@ -395,9 +435,10 @@ class SubgraphDataset:
         return {
             "subgraph_triples": subgraph_triples,
             "perturbed_subgraph_triples": perturbed_subgraph_triples,
+            "perturbation_log": perturbation_log,
             "similarity": similarity,
-            "subgraph_path": str(subgraph_path),
-            "perturbed_subgraph_path": str(perturbed_subgraph_path),
+            "subgraph_hash": subgraph_hash,
+            "perturbed_subgraph_hash": perturbed_subgraph_hash,
         }
 
     def _save_dataset(self, subgraph_dataset: pd.DataFrame) -> None:
@@ -405,24 +446,18 @@ class SubgraphDataset:
         # Generates a unique hash for the dataset based on the hashes of individual
         # subgraphs and perturbed subgraphs
         hash_key = hashlib.md5()
-        sg_hash_keys = (
-            subgraph_dataset["subgraph_path"].apply(lambda x: Path(x).stem).to_list()
-        )
-        psg_hash_keys = (
-            subgraph_dataset["perturbed_subgraph_path"]
-            .apply(lambda x: Path(x).stem)
-            .to_list()
-        )
+        sg_hash_keys = subgraph_dataset["subgraph_hash"].to_list()
+        psg_hash_keys = subgraph_dataset["perturbed_subgraph_hash"].to_list()
         all_keys = "".join(sg_hash_keys + psg_hash_keys)
         hash_key.update(all_keys.encode())
         save_hash = hash_key.hexdigest()
 
-        save_path = self.save_dir / f"{save_hash}.csv"  # type: ignore
-        subgraph_dataset.to_csv(save_path)
+        save_path = self.dataset_save_dir / f"{save_hash}.csv"  # type: ignore
+        subgraph_dataset.to_csv(save_path, index=False)
 
         print(f"Dataset saved to {save_path}")
 
-    def generate(self, n_iter: int) -> pd.DataFrame:
+    def generate(self, n_iter: int, max_retries: Optional[int] = None) -> pd.DataFrame:
         """Generates a dataset of subgraph/perturbed subgraph pairs
 
         Parameters
@@ -430,6 +465,8 @@ class SubgraphDataset:
         n_iter : int
             Number of iterations of generation. This will determined the
             number of rows in the final dataset
+        max_retries: int, optional
+            Number of perturbations to retry before giving up
 
         Returns
         -------
@@ -445,22 +482,28 @@ class SubgraphDataset:
             - "perturbed_subgraph_path": File path where the perturbed subgraph is
             saved
         """
+        if not max_retries:
+            max_retries = 2 * n_iter
+
         all_data = {}
-        for idx in range(n_iter):
+        pbar = tqdm(total=n_iter)
+        retries = 0
+        idx = 0
+        while idx < n_iter and retries < max_retries:
             # Reset number of edits
-            self.perturber.total_edits = 0
+            self.perturber.reset()
 
             # Generate `n_nodes` within `n_node_range`
             n_nodes = random.randrange(self.n_node_range[0], self.n_node_range[1])
 
             # Generates a random fraction of total nodes to act as number of
             # perturbations
-            n_perturbations = round(
+            n_perturbations = np.ceil(  # Used to avoid rounding down to 0
                 random.uniform(
                     self.p_perturbation_range[0], self.p_perturbation_range[1]
                 )
                 * n_nodes
-            )
+            ).item()
 
             start_node = self._sample_start_node()
 
@@ -471,22 +514,43 @@ class SubgraphDataset:
                 node_type_field="node_type",
             )
 
-            perturbed_subgraph = self.perturber.perturb(
-                subgraph, n_perturbations=n_perturbations
-            )
+            try:
+                perturbed_subgraph = self.perturber.perturb(
+                    subgraph, n_perturbations=n_perturbations
+                )
+            except NoValidEdgeError:
+                retries += 1
+                continue
 
             # Save both subgraphs and collect unique IDs
-            subgraph_path = self._save_subgraph(subgraph)
-            perturbed_subgraph_path = self._save_subgraph(perturbed_subgraph)
+            subgraph_hash = self._get_graph_hash(subgraph)
+            perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
+
+            if self.save_subgraphs:
+                self._save_subgraphs(
+                    subgraph, perturbed_subgraph, subgraph_hash, perturbed_subgraph_hash
+                )
 
             row_data = self._format_row_data(
-                subgraph, perturbed_subgraph, subgraph_path, perturbed_subgraph_path
+                subgraph,
+                perturbed_subgraph,
+                self.perturber.perturbation_log,
+                subgraph_hash,
+                perturbed_subgraph_hash,
             )
 
             all_data[idx] = row_data
+            pbar.update(1)
+            idx += 1
 
-        subgraph_dataset = pd.DataFrame(all_data).T
+        if idx == n_iter:
+            subgraph_dataset = pd.DataFrame(all_data).T
+            self._save_dataset(subgraph_dataset)
 
-        self._save_dataset(subgraph_dataset)
-
-        return subgraph_dataset
+            return subgraph_dataset
+        else:
+            raise ValueError(
+                f"Max retries {max_retries} exceeded. "
+                f"Unable to generate {n_iter} subgraphs."
+                "Consider increasing `max_retries` or reducing `n_iter`"
+            )
