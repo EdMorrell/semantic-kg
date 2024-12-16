@@ -25,6 +25,10 @@ class BasePerturbation(abc.ABC):
         # their impact on surrounding edges
         self.edit_count = 0
 
+    def reset(self) -> None:
+        self.perturbation_log = []
+        self.edit_count = 0
+
     def _log_perturbation(
         self,
         perturbation_type: str,
@@ -94,6 +98,11 @@ class EdgeAdditionPerturbation(BasePerturbation):
 
         all_distance = nx.floyd_warshall(graph)
         node_distances = {k: v for k, v in all_distance[src_node].items() if v > 1}
+
+        # Raise an error if no edges greater than 1
+        if not node_distances:
+            raise NoValidEdgeError("No edge distances greater than 1.")
+
         distances = np.array(list(node_distances.values()))
 
         inv_distances = 1 / distances
@@ -316,29 +325,39 @@ class GraphPerturber:
         if not np.isclose(self.p_prob.sum(), 1.0):
             raise ValueError("`p_prob` must sum to 1")
 
+    def reset(self) -> None:
+        """Resets the perturbation logs. Used when re-applying class to new graphs"""
+        self.perturbation_log = []
+        self.total_edits = 0
+
     def perturb(
         self, graph: nx.Graph, n_perturbations: int, max_retries: Optional[int] = None
     ) -> nx.Graph:
         p_graph = nx.Graph(graph)
 
         if not max_retries:
-            max_retries = 3 * n_perturbations
+            max_retries = max(10, 3 * n_perturbations)
 
         p_count = 0
         retries = 0
         while p_count < n_perturbations and retries < max_retries:
             sample_idx = np.random.choice(
                 np.arange(len(self.perturbations)), p=self.p_prob
-            )
+            ).item()
             perturber = self.perturbations[sample_idx]
+
+            # Sets edit history and count back to 0
+            perturber.reset()
+
             try:
                 p_graph = perturber.create(p_graph)
-                self.perturbation_log.append(perturber.perturbation_log[-1])
-                self.total_edits += perturber.edit_count
-                p_count += 1
             except NoValidEdgeError:
                 retries += 1
                 continue
+
+            self.perturbation_log.append(perturber.perturbation_log[-1])
+            self.total_edits += perturber.edit_count
+            p_count += 1
 
         if p_count == n_perturbations:
             return p_graph
