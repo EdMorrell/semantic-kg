@@ -476,11 +476,11 @@ class SubgraphDataset:
             subgraph
             - "perturbed_subgraph_triples": List of triples representing the
             perturbed subgraph
+            - "perturbation_log": Log of all perturbations made to subgraph
             - "similarity": Similarity score between original subgraph and perturbed
             subgraph
-            - "subgraph_path": File path where the original subgraph is saved
-            - "perturbed_subgraph_path": File path where the perturbed subgraph is
-            saved
+            - "subgraph_hash": Unique hash of subgraph (to identify subgraph filepath)
+            - "perturbed_subgraph_hash": Unique hash of perturbed subgraph
         """
         if not max_retries:
             max_retries = 2 * n_iter
