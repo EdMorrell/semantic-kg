@@ -353,7 +353,7 @@ class SubgraphDataset:
 
         self.save_subgraphs = save_subgraphs
         if not subgraph_save_dir and self.save_subgraphs:
-            subgraph_save_dir = Path(root_dir) / "outputs"
+            subgraph_save_dir = Path(root_dir) / "outputs" / "subgraphs"
             subgraph_save_dir.mkdir(parents=True, exist_ok=True)
         self.subgraph_save_dir = subgraph_save_dir
 
