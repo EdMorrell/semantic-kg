@@ -1,8 +1,9 @@
 import os
+import re
 import ast
 import abc
 import random
-from typing import Callable, Optional, Protocol
+from typing import Callable, Literal, Optional, Protocol
 
 import spacy
 from spacy.cli.download import download
@@ -219,8 +220,50 @@ class ScorerProtocol(Protocol):
     """Protocol class for scorer classes"""
 
     @abc.abstractmethod
-    def score(self, response: str, **kwargs) -> float:
+    def score(
+        self,
+        response: str,
+        triples: list[dict[str, dict[str, str]]],
+        **kwargs,
+    ) -> float:
+        # TODO: Figure out how to avoid relying on `triples` input
         pass
+
+
+# Regex pattern to match quoted strings
+QUOTE_REGEX = r"[\"'`]([^\"'`]*)[\"'`]"
+
+
+class RegexMatcherScorer:
+    def __init__(
+        self, pattern: str, mode: Literal["exists", "not_exists"] = "exists"
+    ) -> None:
+        """Scorer class to match a regex pattern in a response
+
+        Parameters
+        ----------
+        pattern : str
+            Regex pattern to match in response
+        mode : Literal["exists", "not_exists"], optional
+            Operating modes:
+            - `exists`: If pattern exists in response then score is 1.0
+            - `not_exists`: If pattern doesn't exist in response then score is 1.0
+        """
+        self.pattern = pattern
+        self.mode = mode
+
+    def score(
+        self, response: str, triples: list[dict[str, dict[str, str]]] = None
+    ) -> float:
+        """Scores a response based on the presence of a regex pattern"""
+        pattern_found = re.search(self.pattern, response)
+
+        if self.mode == "exists":
+            return 1.0 if pattern_found else 0.0
+        elif self.mode == "not_exists":
+            return 0.0 if pattern_found else 1.0
+        else:
+            raise ValueError("Invalid mode. Mode should be 'exists' or 'not_exists'.")
 
 
 class KGReconstructionScorer:
