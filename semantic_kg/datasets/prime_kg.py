@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from matplotlib import colormaps
 
-from semantic_kg.models.prompts import triple_prompt_template, prime_kg_prompt_rules
+from semantic_kg.prompts.default import triple_prompt_template
+from semantic_kg.prompts.prime_kg import prime_kg_prompt_rules
 from semantic_kg.perturbation import (
     EdgeAdditionPerturbation,
     EdgeDeletionPerturbation,
