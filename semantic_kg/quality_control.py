@@ -223,7 +223,6 @@ class ScorerProtocol(Protocol):
         self,
         response: str,
         triples: list[dict[str, dict[str, str]]],
-        **kwargs,
     ) -> float:
         # TODO: Figure out how to avoid relying on `triples` input
         pass
@@ -374,6 +373,37 @@ class KGReconstructionScorer:
         self.reconstructed_triples = reconstructed_triples
 
         return sum(scores) / len(scores)
+
+
+def build_reconstruction_scorer(
+    scoring_model: BaseTextGeneration, match_direction: bool = True
+) -> KGReconstructionScorer:
+    """Helper function to load an instantiated reconstruction scorer
+
+    Parameters
+    ----------
+    scoring_model : BaseTextGeneration
+        Scoring model to use for reconstruction
+    match_direction : bool, optional
+        If True then the direction of the triple must match, by default True
+    """
+    node_checker = NLPNodeEquality(preserve_order=False)
+    scorer = TripleCompare(
+        node_match_fn=node_checker,
+        edge_match_fn=node_checker,
+        match_direction=match_direction,
+    )
+
+    user_prompt_template = """Statement: {statement}"""
+
+    scorer = KGReconstructionScorer(
+        llm=scoring_model,
+        prompt_template=user_prompt_template,
+        max_retries=5,
+        scorer=scorer,
+    )
+
+    return scorer
 
 
 class BatchReconstructionScorer:
