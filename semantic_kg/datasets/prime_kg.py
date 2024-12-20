@@ -1,4 +1,3 @@
-from functools import partial
 import random
 from typing import Optional
 
@@ -8,14 +7,6 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from matplotlib import colormaps
 
-from semantic_kg.prompts.default import (
-    triple_prompt_template,
-    triple_prompt_template_directed,
-)
-from semantic_kg.prompts.prime_kg import (
-    prime_kg_prompt_rules,
-    prime_kg_fewshot_examples,
-)
 from semantic_kg.perturbation import (
     EdgeAdditionPerturbation,
     EdgeDeletionPerturbation,
@@ -137,18 +128,6 @@ def build_primekg_perturber(
         ],
         p_prob=[0.3, 0.3, 0.3, 0.1],
     )
-
-
-def format_primekg_prompt(directed: bool = True) -> str:
-    """Helper function to generate a default prompt template for PrimeKG"""
-    template = triple_prompt_template_directed if directed else triple_prompt_template
-    rule_formatter = partial(
-        template.format,
-        fewshot_examples=prime_kg_fewshot_examples,
-        dataset_rules=prime_kg_prompt_rules,
-    )
-
-    return rule_formatter(triples="{triples}")
 
 
 def plot_primekg_graph(graph: nx.Graph) -> None:
