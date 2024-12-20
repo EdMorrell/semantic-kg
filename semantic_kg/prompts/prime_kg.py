@@ -35,7 +35,7 @@ You could say:
 """
 
 
-prime_kg_prompt_rules = """If the relation is described as "parent-child" this refers to the fact that the "source_node" is a sub-type of the "target_node", it does not refer to hereditary relations.
+prime_kg_prompt_rules = """If the relation is described as "parent-child" this refers to the fact that the "target_node" is a sub-type of the "parent_node", it does not refer to hereditary relations.
 
 In your final response, do NOT put name of any node or relation in quotes.
 For example for the node `{{"name": "Facial palsy"}}`:
