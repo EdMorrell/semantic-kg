@@ -224,7 +224,6 @@ class ScorerProtocol(Protocol):
         self,
         response: str,
         triples: list[dict[str, dict[str, str]]],
-        **kwargs,
     ) -> float:
         # TODO: Figure out how to avoid relying on `triples` input
         pass
