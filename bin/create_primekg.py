@@ -9,12 +9,11 @@ from semantic_kg.quality_control.scorer import (
     RegexMatcherScorer,
     QUOTE_REGEX,
 )
-from semantic_kg.models import OpenAITextGeneration
+from semantic_kg.models.reconstruction import KGReconstuctionModel
 from semantic_kg.prompts import prime_kg
-from semantic_kg.prompts.default import triple_response_format
 from semantic_kg.quality_control.utils import build_reconstruction_scorer
-from semantic_kg.datasets.prime_kg import (
-    format_primekg_prompt,
+from semantic_kg.prompts.prime_kg import (
+    get_default_prompt_template,
 )
 from semantic_kg.generation import (
     NLGenerationPipeline,
@@ -38,18 +37,6 @@ def parse_args() -> argparse.Namespace:
         / "73fef7a77fd16f36852cbfad309f976d.csv",
     )
     parser.add_argument(
-        "--node_fpath",
-        type=Path,
-        help="Path to PrimeKG nodes CSV file for finding node types for scorer",
-        default=ROOT_DIR / "datasets" / "prime_kg" / "nodes.csv",
-    )
-    parser.add_argument(
-        "--edge_fpath",
-        type=Path,
-        help="Path to PrimeKG edges CSV file for finding edge types for scorer",
-        default=ROOT_DIR / "datasets" / "prime_kg" / "edges.csv",
-    )
-    parser.add_argument(
         "--model_type",
         type=str,
         help=f"Model type to load. Options are: {list(models.MODEL_MAP.keys())}",
@@ -57,6 +44,18 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model_id", type=str, help="ID of model to load", default="gpt-4-32k"
+    )
+    parser.add_argument(
+        "--scorer_model_type",
+        type=str,
+        help=f"Model type to load for reconstruction scorer. Options are: {list(models.MODEL_MAP.keys())}",
+        default="openai",
+    )
+    parser.add_argument(
+        "--scorer_model_id",
+        type=str,
+        help="ID of model to load for reconstruction scorer. NOTE: Must support structured outputs.",
+        default="gpt-4o",
     )
     parser.add_argument(
         "--cache_dir",
@@ -68,7 +67,7 @@ def parse_args() -> argparse.Namespace:
         "--n_responses",
         type=int,
         help="Number of responses to generate per subgraph",
-        default=10,
+        default=5,
     )
     parser.add_argument(
         "--max_quality_retries",
@@ -96,27 +95,38 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_qc_scorers(
-    node_df: pd.DataFrame,
-    edge_df: pd.DataFrame,
+    scorer_model_type: str,
+    scorer_model_id: str,
     match_direction: bool,
 ) -> list[ScorerConfig]:
     """Build quality control scorers"""
-    node_types = node_df["node_type"].unique().tolist()
-    edge_types = edge_df["display_relation"].unique().tolist()
-
-    system_prompt = prime_kg.prime_kg_scorer_system_prompt_template.format(
-        node_types=node_types,
-        edge_types=edge_types,
-        response_schema=triple_response_format,
-    )
-
-    scorer_model = OpenAITextGeneration(
-        model_id="gpt-4o",
-        cache_dir=Path("outputs/responses/"),
+    entity_extractor_system_prompt = prime_kg.get_entity_extractor_system_prompt()
+    entity_extractor_model = models.load_model(
+        scorer_model_type,
+        model_id=scorer_model_id,
+        cache_dir=cache_dir,
         temperature=1.0,
-        system_prompt=system_prompt,
+        system_prompt=entity_extractor_system_prompt,
         structured_output=True,
     )
+
+    kg_extractor_system_prompt = prime_kg.get_kg_extractor_system_prompt(
+        directed=match_direction
+    )
+    kg_extractor_model = models.load_model(
+        scorer_model_type,
+        model_id=scorer_model_id,
+        cache_dir=cache_dir,
+        temperature=1.0,
+        system_prompt=kg_extractor_system_prompt,
+        structured_output=True,
+    )
+
+    scorer_model = KGReconstuctionModel(
+        entity_generation_model=entity_extractor_model,
+        kg_generation_model=kg_extractor_model,
+    )
+
     reconstruction_scorer = build_reconstruction_scorer(scorer_model, match_direction)
 
     regex_scorer = RegexMatcherScorer(pattern=QUOTE_REGEX, mode="not_exists")
@@ -129,10 +139,10 @@ def build_qc_scorers(
 
 def main(
     subgraph_fpath: Path,
-    node_fpath: Path,
-    edge_fpath: Path,
     model_type: str,
     model_id: str,
+    scorer_model_type: str,
+    scorer_model_id: str,
     cache_dir: Path,
     save_path: Path,
     n_responses: int = 10,
@@ -151,16 +161,17 @@ def main(
         "perturbed_subgraph_triples"
     ].apply(ast.literal_eval)
 
-    node_df = pd.read_csv(node_fpath)
-    edge_df = pd.read_csv(edge_fpath)
-
     model = models.load_model(
         model_type, model_id=model_id, cache_dir=cache_dir, temperature=temperature
     )
-    prompt_template = format_primekg_prompt()
+    prompt_template = get_default_prompt_template()
 
     # Quality control classes
-    quality_scorers = build_qc_scorers(node_df, edge_df, match_direction)
+    quality_scorers = build_qc_scorers(
+        scorer_model_type=scorer_model_type,
+        scorer_model_id=scorer_model_id,
+        match_direction=match_direction,
+    )
 
     pipeline = NLGenerationPipeline(
         model,
@@ -185,9 +196,9 @@ if __name__ == "__main__":
 
     main(
         subgraph_fpath=args.subgraph_fpath,
-        node_fpath=args.node_fpath,
-        edge_fpath=args.edge_fpath,
         model_type=args.model_type,
+        scorer_model_type=args.scorer_model_type,
+        scorer_model_id=args.scorer_model_id,
         model_id=args.model_id,
         cache_dir=cache_dir,
         save_path=args.save_path,
