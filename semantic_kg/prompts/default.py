@@ -31,6 +31,31 @@ Triples: {triples}
 """
 
 
+triple_prompt_template_directed = """You are going to be given a list of triples from a directed knowledge graph. Each triple consists of a subject, a relation, and an object.
+
+The triples are defined in directed order, where the relationship direction is from "source_node" to "target_node"
+
+Your goal is to express this triple in a continuous natural language statement suitable for a general or a scientific audience.
+
+For example, given the triple:
+
+{fewshot_examples}
+
+Rules:
+
+You must use all of the entities provided in the triple and please include each node verbatim but do not use quotes.
+
+Your statement must preserve the directions of the knowledge-graph.
+
+Do NOT list the items in the triple as a list. Instead, write a sentence or paragraph that describes the relationship between every item in the triple.
+
+You can also add additional information to the triple to make the relationship more clear, however you must include all the triples in your response.
+
+{dataset_rules}
+
+Triples: {triples}
+"""
+
 triple_response_format = {
     "type": "object",
     "properties": {

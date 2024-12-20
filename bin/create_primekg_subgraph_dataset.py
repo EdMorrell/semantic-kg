@@ -10,21 +10,22 @@ from dotenv import load_dotenv
 from semantic_kg.datasets import prime_kg
 from semantic_kg.sampling import SubgraphSampler, SubgraphDataset
 
+ROOT_DIR = Path(__file__).parent.parent
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--node_dpath",
-        type=str,
-        help="Path to PrimeKG nodes CSV file",
-        # TODO: Make path relative to repo
-        default="~/Downloads/dataverse_files/nodes.csv",
+        "--node_fpath",
+        type=Path,
+        help="Path to PrimeKG nodes CSV file for finding node types for scorer",
+        default=ROOT_DIR / "datasets" / "prime_kg" / "nodes.csv",
     )
     parser.add_argument(
-        "--edge_dpath",
-        type=str,
-        help="Path to PrimeKG edges CSV file",
-        default="~/Downloads/dataverse_files/edges.csv",
+        "--edge_fpath",
+        type=Path,
+        help="Path to PrimeKG edges CSV file for finding edge types for scorer",
+        default=ROOT_DIR / "datasets" / "prime_kg" / "edges.csv",
     )
     parser.add_argument(
         "--n_iter",
@@ -79,8 +80,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main(
-    node_dpath: str | Path,
-    edge_dpath: str | Path,
+    node_fpath: str | Path,
+    edge_fpath: str | Path,
     n_iter: int,
     max_neighbors: int,
     save_path: Path,
@@ -91,8 +92,8 @@ def main(
     start_node_types: Optional[list[str]] = None,
 ) -> None:
     """Generates a dataset of subgraphs and perturbed subgraphs"""
-    node_df = pd.read_csv(node_dpath)
-    edge_df = pd.read_csv(edge_dpath)
+    node_df = pd.read_csv(node_fpath)
+    edge_df = pd.read_csv(edge_fpath)
 
     relation_map = prime_kg.create_relation_map(node_df, edge_df)
     display_relation_map = prime_kg.create_display_relation_map(edge_df)
@@ -155,8 +156,8 @@ if __name__ == "__main__":
         kwargs["max_p_perturb"] = args.max_p_perturb
 
     main(
-        node_dpath=args.node_dpath,
-        edge_dpath=args.edge_dpath,
+        node_fpath=args.node_fpath,
+        edge_fpath=args.edge_fpath,
         n_iter=args.n_iter,
         max_neighbors=args.max_neighbors,
         save_path=save_path,

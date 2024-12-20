@@ -5,14 +5,14 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from semantic_kg import models
-from semantic_kg.quality_control import (
+from semantic_kg.quality_control.scorer import (
     RegexMatcherScorer,
     QUOTE_REGEX,
-    build_reconstruction_scorer,
 )
 from semantic_kg.models import OpenAITextGeneration
 from semantic_kg.prompts import prime_kg
 from semantic_kg.prompts.default import triple_response_format
+from semantic_kg.quality_control.utils import build_reconstruction_scorer
 from semantic_kg.datasets.prime_kg import (
     format_primekg_prompt,
 )

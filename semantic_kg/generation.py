@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from semantic_kg import utils
-from semantic_kg.quality_control import ScorerProtocol
+from semantic_kg.quality_control.scorer import ScorerProtocol
 from semantic_kg.models.base import BaseTextGeneration
 
 
