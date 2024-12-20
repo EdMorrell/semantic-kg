@@ -1,8 +1,6 @@
 import os
 import re
-import ast
 import abc
-import random
 from typing import Callable, Literal, Optional, Protocol
 
 import spacy
@@ -13,6 +11,7 @@ from tqdm import tqdm
 from semantic_kg import utils
 from semantic_kg.models.base import BaseTextGeneration
 from semantic_kg.models.llm import InvalidResponseError
+from semantic_kg.models.utils import structured_generation_helper
 
 
 def _node_equality(node1: str, node2: str) -> bool:
@@ -359,35 +358,15 @@ class KGReconstructionScorer:
         """
         prompt = self.prompt_template.format(statement=response)
 
-        prng = random.Random(self.seed)
-        attempt = 0
-        max_tokens = self.max_tokens
-        while attempt < self.max_retries:
-            _seed = prng.randint(0, int(1e12))
-            scorer_response = self.llm.generate(prompt, 1, max_tokens, seed=_seed)
-            try:
-                scorer_response = ast.literal_eval(scorer_response[0])  # type: ignore
-                reconstructed_triples = scorer_response["triples"]
-                break
-            except SyntaxError as err:
-                print(f"Error {err}. Retries left: {self.max_retries - attempt - 1}")
-                prompt = (
-                    f"{prompt}\n. You got the following error: {err}."
-                    f"Please try again with valid JSON"
-                )
-                attempt += 1
-                # Increases `max_tokens` for next retry
-                if self.increase_tokens_on_retry:
-                    max_tokens += 500
-            except KeyError as err:
-                print(f"Error {err}. Retries left: {self.max_retries - attempt - 1}")
-                prompt = (
-                    f"{prompt}\n. You got the following error: {err}."
-                    f"Please ensure your response adheres to the schema"
-                )
-                attempt += 1
-        if attempt == self.max_retries:
-            raise InvalidResponseError("Failed to parse response")
+        scorer_response = structured_generation_helper(
+            self.llm,
+            prompt,
+            self.max_retries,
+            self.max_tokens,
+            self.seed,
+            self.increase_tokens_on_retry,
+        )
+        reconstructed_triples = scorer_response["triples"]
 
         scores = self.scorer.score(triples, reconstructed_triples)
 
