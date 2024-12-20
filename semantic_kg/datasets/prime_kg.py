@@ -9,7 +9,10 @@ from matplotlib import patches
 from matplotlib import colormaps
 
 from semantic_kg.prompts.default import triple_prompt_template
-from semantic_kg.prompts.prime_kg import prime_kg_prompt_rules
+from semantic_kg.prompts.prime_kg import (
+    prime_kg_prompt_rules,
+    prime_kg_fewshot_examples,
+)
 from semantic_kg.perturbation import (
     EdgeAdditionPerturbation,
     EdgeDeletionPerturbation,
@@ -136,7 +139,9 @@ def build_primekg_perturber(
 def format_primekg_prompt() -> str:
     """Helper function to generate a default prompt template for PrimeKG"""
     rule_formatter = partial(
-        triple_prompt_template.format, dataset_rules=prime_kg_prompt_rules
+        triple_prompt_template.format,
+        fewshot_examples=prime_kg_fewshot_examples,
+        dataset_rules=prime_kg_prompt_rules,
     )
 
     return rule_formatter(triples="{triples}")
