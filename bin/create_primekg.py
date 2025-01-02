@@ -98,6 +98,7 @@ def build_qc_scorers(
     scorer_model_type: str,
     scorer_model_id: str,
     match_direction: bool,
+    cache_dir: Path,
 ) -> list[ScorerConfig]:
     """Build quality control scorers"""
     entity_extractor_system_prompt = prime_kg.get_entity_extractor_system_prompt()
@@ -171,6 +172,7 @@ def main(
         scorer_model_type=scorer_model_type,
         scorer_model_id=scorer_model_id,
         match_direction=match_direction,
+        cache_dir=cache_dir,
     )
 
     pipeline = NLGenerationPipeline(
