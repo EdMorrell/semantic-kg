@@ -10,6 +10,7 @@ from tqdm import tqdm
 from semantic_kg import utils
 from semantic_kg.quality_control.scorer import ScorerProtocol
 from semantic_kg.models.base import BaseTextGeneration
+from semantic_kg.models.llm import InvalidResponseError
 
 
 DEFAULT_EXCEPTION_MAP = {
@@ -185,10 +186,14 @@ class NLGenerationPipeline:
 
             passes_all_checks = True
             for qc_checker in self.quality_scorers:  # type: ignore
-                if (
-                    qc_checker["scorer"].score(response, triples)
-                    < qc_checker["accept_threshold"]
-                ):
+                try:
+                    score = qc_checker["scorer"].score(response, triples)
+                except (KeyError, TypeError, InvalidResponseError) as err:
+                    print(f"Encountered following error for scorer: {err}")
+                    passes_all_checks = False
+                    break
+
+                if score < qc_checker["accept_threshold"]:
                     passes_all_checks = False
                     break
 
