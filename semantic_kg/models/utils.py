@@ -58,6 +58,12 @@ def structured_generation_helper(
                 f"Please ensure your response adheres to the schema"
             )
             attempt += 1
+        except ValueError as err:
+            print(f"Error {err}. Retries left: {max_retries - attempt - 1}")
+            prompt = (
+                f"{prompt}\n. You got the following error: {err}."
+                f"Please ensure your response adheres to the schema"
+            )
     if attempt == max_retries:
         raise llm.InvalidResponseError("Failed to parse response")
 
