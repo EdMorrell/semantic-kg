@@ -131,6 +131,7 @@ def main(
         max_neighbors=max_neighbors,
         start_node_attrs=start_node_attrs,
         dataset_save_dir=save_path,
+        save_subgraphs=False,
     )
     subgraph_dataset.generate(n_iter=n_iter)
 
