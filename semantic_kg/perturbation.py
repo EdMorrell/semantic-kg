@@ -283,12 +283,8 @@ class NodeRemovalPerturbation(BasePerturbation):
     def _check_is_star_center(self, graph: nx.Graph, node: str) -> bool:
         """Checks if the node is the center of a star graph"""
         return (
-            all(
-                graph.degree[n] == 1
-                for n in graph.nodes
-                if n != node  # type: ignore
-            )
-            and graph.degree[node] == len(graph.nodes) - 1
+            all(graph.degree[n] == 1 for n in graph.nodes if n != node)  # type: ignore
+            and graph.degree[node] == len(graph.nodes) - 1  # type: ignore
         )  # type: ignore
 
     def _get_edit_count(self, graph: nx.Graph, p_graph: nx.Graph, node: str) -> int:
@@ -376,6 +372,8 @@ class GraphPerturber:
     def __init__(
         self,
         perturbations: list[BasePerturbation],
+        node_id_field: str,
+        edge_id_field: str,
         p_prob: Optional[np.ndarray | list[float]] = None,
     ) -> None:
         """Applies perturbations to a graph
@@ -389,6 +387,10 @@ class GraphPerturber:
         perturbations : list[BasePerturbation]
             A list of BasePerturbation objects representing the perturbations
             operations to make to the graph.
+        node_id_field : str
+            The field name to use as the node identifier when computing edit distance
+        edge_id_field : str
+            The field name to use as the edge identifier when computing edit distance
         p_prob : Optional[np.ndarray | list[float]]
             The probability distribution for selecting perturbation operations.
             If not provided, a uniform distribution is used by default.
@@ -401,6 +403,8 @@ class GraphPerturber:
             If the sum of probabilities in `p_prob` is not equal to 1.
         """
         self.perturbations = perturbations
+        self.node_id_field = node_id_field
+        self.edge_id_field = edge_id_field
         self.perturbation_log = []
         self.total_edits = 0
         self.p_prob = p_prob
@@ -471,10 +475,16 @@ class GraphPerturber:
                 continue
 
             self.perturbation_log.append(perturber.perturbation_log[-1])
-            self.total_edits += perturber.edit_count
             p_count += 1
 
         if p_count == n_perturbations:
+            edit_distance = utils.compute_edit_distance(
+                graph,
+                p_graph,
+                node_id_field=self.node_id_field,
+                edge_id_field=self.edge_id_field,
+            )
+            self.total_edits = edit_distance
             return p_graph
         else:
             raise NoValidEdgeError(

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional
 import pytest
+import numpy as np
 import networkx as nx
+from typing import Optional
 
 from semantic_kg import perturbation
 
@@ -23,7 +24,7 @@ class TestEdgeAdditionPerturbation:
         return graph
 
     def test_create(self, test_graph: nx.Graph) -> None:
-        perturber = perturbation.EdgeAdditionPerturbation(node_name_id="id")
+        perturber = perturbation.EdgeAdditionPerturbation(node_type_id="id")
         p_graph = perturber.create(test_graph)
 
         assert p_graph.number_of_edges() == test_graph.number_of_edges() + 1
@@ -42,7 +43,7 @@ class TestEdgeAdditionPerturbation:
         valid_edge_names = ["A_B", "B_C"]
 
         perturber = perturbation.EdgeAdditionPerturbation(
-            node_name_id="id", valid_edge_types=valid_edge_names
+            node_type_id="id", valid_edge_types=valid_edge_names
         )
         with pytest.raises(perturbation.NoValidEdgeError):
             _ = perturber.create(test_graph)
@@ -67,7 +68,7 @@ class TestEdgeAdditionPerturbation:
                 return {"src_node_id": src_id, "target_node_id": target_id}
 
         perturber = perturbation.EdgeAdditionPerturbation(
-            node_name_id="id",
+            node_type_id="id",
             edge_attribute_mapper=MockAttributeMapper(),
         )
 
@@ -84,7 +85,7 @@ class TestEdgeAdditionPerturbation:
         ) or (edge_data["src_node_id"] == "C" and edge_data["target_node_id"] == "A")
 
     def test_reset(self, test_graph: nx.Graph) -> None:
-        perturber = perturbation.EdgeAdditionPerturbation(node_name_id="id")
+        perturber = perturbation.EdgeAdditionPerturbation(node_type_id="id")
         _ = perturber.create(test_graph)
 
         perturber.reset()
@@ -311,3 +312,147 @@ class TestNodeRemovalPerturbation:
         perturber = perturbation.NodeRemovalPerturbation()
         with pytest.raises(perturbation.NoValidNodeError):
             _ = perturber.create(graph, "A")
+
+
+class MockPerturbation(perturbation.BasePerturbation):
+    def __init__(self):
+        super().__init__()
+        self.n_perturbations = 0
+
+    def create(self, graph: nx.Graph) -> nx.Graph:
+        p_graph = nx.Graph(graph)
+
+        if self.n_perturbations == 0:
+            # Remove B -> C edge
+            p_graph.remove_edge("B", "C")
+            self.n_perturbations += 1
+            self._log_perturbation("edge_deletion", "B", "C")
+            return p_graph
+        elif self.n_perturbations == 1:
+            # Add A -> C edge
+            p_graph.add_edge("A", "C", id="increase")
+            self.n_perturbations += 1
+            self._log_perturbation("edge_addition", "A", "C")
+            return p_graph
+        else:
+            raise perturbation.NoValidEdgeError("No valid edge")
+
+
+class TestGraphPerturber:
+    @pytest.fixture
+    def test_graph(self):
+        graph = nx.Graph()
+        graph.add_node("A", id="A")
+        graph.add_node("B", id="B")
+        graph.add_node("C", id="C")
+        graph.add_edge("A", "B", id="increase")
+        graph.add_edge("B", "C", id="increase")
+        return graph
+
+    def test_init(self):
+        mock_perturbation = MockPerturbation()
+        perturber = perturbation.GraphPerturber(
+            perturbations=[mock_perturbation],
+            node_id_field="id",
+            edge_id_field="id",
+            p_prob=[1.0],
+        )
+        assert perturber.perturbations == [mock_perturbation]
+        assert perturber.node_id_field == "id"
+        assert perturber.edge_id_field == "id"
+        assert perturber.perturbation_log == []
+        assert perturber.total_edits == 0
+        assert np.allclose(perturber.p_prob, [1.0])  # type: ignore
+
+    def test_init_default_p_prob(self):
+        mock_perturbation = MockPerturbation()
+        perturber = perturbation.GraphPerturber(
+            perturbations=[mock_perturbation],
+            node_id_field="id",
+            edge_id_field="id",
+        )
+        assert np.allclose(perturber.p_prob, [1.0])  # type: ignore
+
+    def test_init_invalid_p_prob_length(self):
+        mock_perturbation = MockPerturbation()
+        with pytest.raises(ValueError):
+            perturbation.GraphPerturber(
+                perturbations=[mock_perturbation],
+                node_id_field="id",
+                edge_id_field="id",
+                p_prob=[0.5, 0.5, 0.5],
+            )
+
+    def test_init_invalid_p_prob_sum(self):
+        mock_perturbation = MockPerturbation()
+        with pytest.raises(ValueError):
+            perturbation.GraphPerturber(
+                perturbations=[mock_perturbation],
+                node_id_field="id",
+                edge_id_field="id",
+                p_prob=[0.5, 0.5],
+            )
+
+    def test_reset(self):
+        mock_perturbation = MockPerturbation()
+        perturber = perturbation.GraphPerturber(
+            perturbations=[mock_perturbation],
+            node_id_field="id",
+            edge_id_field="id",
+        )
+        perturber.perturbation_log = [{"type": "edge_addition"}]
+        perturber.total_edits = 5
+
+        perturber.reset()
+
+        assert perturber.perturbation_log == []
+        assert perturber.total_edits == 0
+
+    def test_perturb(self, test_graph: nx.Graph) -> None:
+        mock_perturbation = MockPerturbation()
+        perturber = perturbation.GraphPerturber(
+            perturbations=[mock_perturbation],
+            node_id_field="id",
+            edge_id_field="id",
+        )
+
+        p_graph = perturber.perturb(test_graph, n_perturbations=2)
+
+        # Check B -> C edge removed and A -> C added
+        assert p_graph.has_edge("A", "C")
+        assert not p_graph.has_edge("B", "C")
+
+        # Check perturbation log is correctly updated
+        assert perturber.perturbation_log == [
+            {"type": "edge_deletion", "source": "B", "target": "C", "metadata": None},
+            {"type": "edge_addition", "source": "A", "target": "C", "metadata": None},
+        ]
+
+        # Check total edits
+        assert perturber.total_edits == 2
+
+    def test_perturb_not_enough_valid_edges(self, test_graph: nx.Graph) -> None:
+        mock_perturbation = MockPerturbation()
+        perturber = perturbation.GraphPerturber(
+            perturbations=[mock_perturbation],
+            node_id_field="id",
+            edge_id_field="id",
+        )
+
+        with pytest.raises(perturbation.NoValidEdgeError):
+            perturber.perturb(test_graph, n_perturbations=3, max_retries=1)
+
+    def test_perturb_duplicate(self, test_graph: nx.Graph) -> None:
+        mock_perturbation = MockPerturbation()
+        perturber = perturbation.GraphPerturber(
+            perturbations=[mock_perturbation],
+            node_id_field="id",
+            edge_id_field="id",
+        )
+        # Append the first perturbation made by MockPerturbation to the log and
+        # an error should be raised when trying to apply the same perturbation
+        perturber.perturbation_log.append(
+            {"type": "edge_deletion", "source": "B", "target": "C", "metadata": None},
+        )
+        with pytest.raises(perturbation.NoValidEdgeError):
+            perturber.perturb(test_graph, n_perturbations=1, max_retries=1)
