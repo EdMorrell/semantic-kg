@@ -126,6 +126,8 @@ def build_primekg_perturber(
             edge_replacement_perturbation,
             node_removal_perturbation,
         ],
+        node_id_field="node_index",
+        edge_id_field="display_relation",
         p_prob=[0.3, 0.3, 0.3, 0.1],
     )
 
