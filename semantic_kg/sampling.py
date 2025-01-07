@@ -523,8 +523,12 @@ class SubgraphDataset:
                 continue
 
             # Save both subgraphs and collect unique IDs
-            subgraph_hash = self._get_graph_hash(subgraph)
-            perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
+            try:
+                subgraph_hash = self._get_graph_hash(subgraph)
+                perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
+            except UnicodeEncodeError:
+                retries += 1
+                continue
 
             if self.save_subgraphs:
                 self._save_subgraphs(
