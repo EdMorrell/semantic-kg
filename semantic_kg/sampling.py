@@ -505,8 +505,8 @@ class SubgraphDataset:
 
         def _get_n_nodes(triple: list[dict[str, str]]) -> int:
             all_node_names = [d["source_node"]["name"] for d in triple] + [  # type: ignore
-                d["target_node"]["name"]
-                for d in triple  # type: ignore
+                d["target_node"]["name"]  # type: ignore
+                for d in triple
             ]
             return len(set(all_node_names))
 
