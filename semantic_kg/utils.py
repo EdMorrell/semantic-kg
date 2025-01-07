@@ -7,11 +7,21 @@ def softmax(input_arr: np.ndarray, temperature: float) -> np.ndarray:
     return np.exp(input_arr / temperature) / np.exp(input_arr / temperature).sum()
 
 
-def graph_edit_distance(g1: nx.Graph, g2: nx.Graph) -> int:
-    def _edge_equivalence(edge1: dict, edge2: dict) -> bool:
-        return edge1 == edge2
+def compute_edit_distance(
+    graph: nx.Graph, p_graph: nx.Graph, node_id_field: str, edge_id_field: str
+) -> float:
+    def _node_match(n1: dict, n2: dict) -> bool:
+        return n1[node_id_field] == n2[node_id_field]
 
-    return nx.graph_edit_distance(g1, g2, edge_match=_edge_equivalence)
+    def _edge_match(e1: dict, e2: dict) -> bool:
+        return e1[edge_id_field] == e2[edge_id_field]
+
+    return nx.graph_edit_distance(
+        graph,
+        p_graph,
+        node_match=_node_match,
+        edge_match=_edge_match,
+    )
 
 
 def find_field_placeholders(text: str) -> list[str]:
