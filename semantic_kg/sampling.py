@@ -345,6 +345,9 @@ class SubgraphDataset:
         self.max_neighbors = max_neighbors
         self.start_node_attrs = start_node_attrs
 
+        self.subgraph_hashes = set()
+        self.perturbed_subgraph_hashes = set()
+
         # Configure save directories
         root_dir = Path(__file__).parent.parent
         if not dataset_save_dir:
@@ -628,6 +631,16 @@ class SubgraphDataset:
             )
 
             try:
+                subgraph_hash = self._get_graph_hash(subgraph)
+            except UnicodeEncodeError:
+                retries += 1
+                continue
+
+            if subgraph_hash in self.subgraph_hashes:
+                retries += 1
+                continue
+
+            try:
                 perturbed_subgraph = self.perturber.perturb(
                     subgraph, n_perturbations=n_perturbations
                 )
@@ -635,15 +648,19 @@ class SubgraphDataset:
                 retries += 1
                 continue
 
-            # Save both subgraphs and collect unique IDs
             try:
-                subgraph_hash = self._get_graph_hash(subgraph)
                 perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
-            except UnicodeEncodeError:
+            except UnicodeDecodeError:
+                retries += 1
+                continue
+
+            if perturbed_subgraph_hash in self.perturbed_subgraph_hashes:
                 retries += 1
                 continue
 
             if self.save_subgraphs:
+                self.subgraph_hashes.add(subgraph_hash)
+                self.perturbed_subgraph_hashes.add(perturbed_subgraph_hash)
                 self._save_subgraphs(
                     subgraph, perturbed_subgraph, subgraph_hash, perturbed_subgraph_hash
                 )
