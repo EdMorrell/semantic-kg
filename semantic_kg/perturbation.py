@@ -14,6 +14,12 @@ class NoValidEdgeError(Exception):
     pass
 
 
+class NoValidNodeError(Exception):
+    """Error for instance where no valid nodes available for a perturbation"""
+
+    pass
+
+
 class BasePerturbation(abc.ABC):
     def __init__(self) -> None:
         """Base class for a perturbation operation to apply to a graph"""
@@ -62,8 +68,8 @@ class EdgeAttributeMapper(Protocol):
 class EdgeAdditionPerturbation(BasePerturbation):
     def __init__(
         self,
-        node_name_id: str,
-        valid_edges: Optional[list[str]] = None,
+        node_type_id: str,
+        valid_edge_types: Optional[list[str]] = None,
         edge_attribute_mapper: Optional[EdgeAttributeMapper] = None,
         temperature: float = 0.2,
     ) -> None:
@@ -71,10 +77,12 @@ class EdgeAdditionPerturbation(BasePerturbation):
 
         Parameters:
         ----------
-        node_name_id : str
-            The ID field of the node in the graph
-        valid_edges : Optional[list[str]], optional
-            A list of valid edges, if none set then all edges valid, by
+        node_type_id : str
+            Identifier to use for the type of the node
+        valid_edge_types : Optional[list[str]], optional
+            A list of valid edges types, defined as a string of the
+            source and target node types: "{src_node_type}_{target_node_type}",
+            e.g. "gene_disease". If None set then all edges valid, by
             default None.
         edge_attribute_mapper : Optional[EdgeAttributeMapper], optional
             An optional object to use for generating edge attributes,
@@ -88,15 +96,22 @@ class EdgeAdditionPerturbation(BasePerturbation):
             increase the temperature.
         """
         super().__init__()
-        self.node_name_id = node_name_id
-        self.valid_edges = valid_edges
+        self.node_type_id = node_type_id
+        self.valid_edge_types = valid_edge_types
         self.edge_attribute_mapper = edge_attribute_mapper
         self.temperature = temperature
 
     def create(self, graph: nx.Graph, max_resamples: int = 10) -> nx.Graph:
-        src_node = random.choice(list(graph.nodes))
-
         all_distance = nx.floyd_warshall(graph)
+
+        # Only sample from nodes with at least one edge greater than 1
+        valid_nodes = [
+            node
+            for node in all_distance
+            if any(v > 1 for v in all_distance[node].values())
+        ]
+        src_node = random.choice(valid_nodes)
+
         node_distances = {k: v for k, v in all_distance[src_node].items() if v > 1}
 
         # Raise an error if no edges greater than 1
@@ -115,12 +130,12 @@ class EdgeAdditionPerturbation(BasePerturbation):
                 np.where(np.random.multinomial(1, pvals))[0][0]
             ]
 
-            src_node_name = graph.nodes[src_node][self.node_name_id]
-            target_node_name = graph.nodes[target_node][self.node_name_id]
+            src_node_name = graph.nodes[src_node][self.node_type_id]
+            target_node_name = graph.nodes[target_node][self.node_type_id]
             edge_name = f"{src_node_name}_{target_node_name}"
 
             # Ensures only a valid pair is found
-            if not self.valid_edges or edge_name in self.valid_edges:
+            if not self.valid_edge_types or edge_name in self.valid_edge_types:
                 if self.edge_attribute_mapper:
                     edge_data = self.edge_attribute_mapper.get_attributes(
                         graph.nodes[src_node], graph.nodes[target_node]
@@ -184,7 +199,7 @@ class EdgeDeletionPerturbation(BasePerturbation):
 class EdgeReplacementPerturbation(BasePerturbation):
     def __init__(
         self,
-        node_name_id: str,
+        node_type_id: str,
         edge_name_id: str,
         replace_map: dict[str, list[str]],
         edge_attribute_mapper: EdgeAttributeMapper,
@@ -193,17 +208,22 @@ class EdgeReplacementPerturbation(BasePerturbation):
 
         Parameters
         ----------
-        node_name_id : str
-            Identifier to use as the node name
+        node_type_id : str
+            Identifier to use for the type of the node
         edge_name_id : str
             Identifier to use as the edge name
         replace_map : dict[str, list[str]]
-            Mapping of edge names to possible replacement values
+            A mapping from edge names to a list of possible replacement values.
+            Edge names are defined as the source and target node types:
+            "{src_node_type}_{target_node_type}", e.g. "gene_disease".
+
+            Example: {"gene_disease": ["treats", "causes"]}
+
         edge_attribute_mapper : EdgeAttributeMapper
             Object to use for generating edge attributes
         """
         super().__init__()
-        self.node_name_id = node_name_id
+        self.node_type_id = node_type_id
         self.edge_name_id = edge_name_id
         self.replace_map = replace_map
         self.edge_attribute_mapper = edge_attribute_mapper
@@ -220,7 +240,7 @@ class EdgeReplacementPerturbation(BasePerturbation):
             src_node = graph.nodes[edge[0]]
             target_node = graph.nodes[edge[1]]
             edge_name = (
-                f"{src_node[self.node_name_id]}_{target_node[self.node_name_id]}"
+                f"{src_node[self.node_type_id]}_{target_node[self.node_type_id]}"
             )
 
             if edge_name in self.replace_map and edge not in self.memory:
@@ -257,24 +277,99 @@ class EdgeReplacementPerturbation(BasePerturbation):
 
 class NodeRemovalPerturbation(BasePerturbation):
     def __init__(self) -> None:
+        """Class for removing a node from the graph"""
         super().__init__()
 
-    def create(self, graph: nx.Graph) -> nx.Graph:
-        node = random.choice(list(graph.nodes))
+    def _check_is_star_center(self, graph: nx.Graph, node: str) -> bool:
+        """Checks if the node is the center of a star graph"""
+        return (
+            all(
+                graph.degree[n] == 1
+                for n in graph.nodes
+                if n != node  # type: ignore
+            )
+            and graph.degree[node] == len(graph.nodes) - 1
+        )  # type: ignore
 
-        node_edges = graph.degree[node]  # type: ignore
+    def _get_edit_count(self, graph: nx.Graph, p_graph: nx.Graph, node: str) -> int:
+        # The number of edits should be equal to:
+        # 1 (node removal) + number of edges connected to the node
+        # + any nodes that are isolated (degree 0) after removal
+        isolated_nodes = len(
+            [
+                node
+                for node in p_graph.nodes
+                if p_graph.degree[node] == 0  # type: ignore
+            ]
+        )
+        return 1 + graph.degree[node] + isolated_nodes  # type: ignore
+
+    def _clean_isolated_nodes(self, p_graph: nx.Graph) -> nx.Graph:
+        """Removes any isolated nodes from the graph"""
+        isolated_nodes = [
+            node
+            for node in p_graph.nodes
+            if p_graph.degree[node] == 0  # type: ignore
+        ]
+        perturbed_graph = nx.Graph(p_graph)
+        perturbed_graph.remove_nodes_from(isolated_nodes)
+
+        return perturbed_graph
+
+    def create(self, graph: nx.Graph, rm_node: Optional[str] = None) -> nx.Graph:
+        """Removes a node from the graph
+
+        Method will remove a node from the graph and any corresponding edges.
+        If any nodes are isolated after the removal, they will also be removed.
+
+        The method will avoid removing nodes that are the center of a star graph
+        as this would result in a fully disconnected graph.
+
+        Parameters
+        ----------
+        graph : nx.Graph
+            Graph to perturb
+        rm_node : Optional[str], optional
+            Optionally specify a node to remove (for testing purposes), by default None
+
+        Returns
+        -------
+        nx.Graph
+            Perturbed graph
+
+        Raises
+        ------
+        NoValidNodeError
+            If the total number of nodes is less than 3
+        NoValidNodeError
+            If the node to be removed is the center of a star graph
+        """
+        if len(graph.nodes) < 3:
+            raise NoValidNodeError("Not enough nodes to remove one")
+
+        if not rm_node:
+            valid_nodes = [
+                n for n in graph.nodes if not self._check_is_star_center(graph, n)
+            ]
+            node = random.choice(valid_nodes)
+        else:
+            node = rm_node
+            if self._check_is_star_center(graph, node):
+                raise NoValidNodeError("Node is the center of a star graph")
 
         perturbed_graph = nx.Graph(graph)
         perturbed_graph.remove_node(node)
+        self.edit_count += self._get_edit_count(graph, perturbed_graph, node)
+        perturbed_graph = self._clean_isolated_nodes(perturbed_graph)
+
         self._log_perturbation(
             perturbation_type="node_removal",
             src_node=node,
             target_node=None,
             metadata=graph.nodes[node],
         )
-        self.edit_count += 1 + node_edges
 
-        return graph
+        return perturbed_graph
 
 
 class GraphPerturber:
@@ -330,6 +425,26 @@ class GraphPerturber:
         self.perturbation_log = []
         self.total_edits = 0
 
+    def _apply_perturbation(
+        self, graph: nx.Graph, perturber: BasePerturbation
+    ) -> nx.Graph:
+        p_graph = perturber.create(graph)
+        perturbation_src = perturber.perturbation_log[-1]["source"]
+        perturbation_target = perturber.perturbation_log[-1]["target"]
+
+        # Check there isn't already a perturbation of these 2 nodes
+        for perturbation in self.perturbation_log:
+            if (
+                perturbation["source"] == perturbation_src
+                and perturbation["target"] == perturbation_target
+            ) or (
+                perturbation["source"] == perturbation_target
+                and perturbation["target"] == perturbation_src
+            ):
+                raise NoValidEdgeError("Perturbation already exists")
+
+        return p_graph
+
     def perturb(
         self, graph: nx.Graph, n_perturbations: int, max_retries: Optional[int] = None
     ) -> nx.Graph:
@@ -350,8 +465,8 @@ class GraphPerturber:
             perturber.reset()
 
             try:
-                p_graph = perturber.create(p_graph)
-            except NoValidEdgeError:
+                p_graph = self._apply_perturbation(p_graph, perturber)
+            except (NoValidEdgeError, NoValidNodeError, IndexError):
                 retries += 1
                 continue
 
