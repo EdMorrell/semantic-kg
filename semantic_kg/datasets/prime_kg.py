@@ -101,15 +101,15 @@ def build_primekg_perturber(
     replace_map: dict[str, list[str]],
 ) -> GraphPerturber:
     edge_addition_perturbation = EdgeAdditionPerturbation(
-        node_name_id="node_type",
-        valid_edges=list(relation_map.keys()),
+        node_type_id="node_type",
+        valid_edge_types=list(relation_map.keys()),
         edge_attribute_mapper=PrimeKGEdgeAttributeMapper(
             relation_map=relation_map, display_relation_map=display_relation_map
         ),
     )
     edge_deletion_perturbation = EdgeDeletionPerturbation()
     edge_replacement_perturbation = EdgeReplacementPerturbation(
-        node_name_id="node_type",
+        node_type_id="node_type",
         edge_name_id="relation",
         replace_map=replace_map,
         edge_attribute_mapper=PrimeKGEdgeAttributeMapper(
