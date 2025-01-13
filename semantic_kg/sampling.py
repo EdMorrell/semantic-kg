@@ -292,6 +292,7 @@ class SubgraphDataset:
         perturber: GraphPerturber,
         node_name_field: str,
         edge_name_field: str,
+        node_type_field: str = "node_type",
         n_node_range: tuple[int, int] = (3, 12),
         p_perturbation_range: tuple[float, float] = (0.1, 0.7),
         max_neighbors: int = 3,
@@ -314,6 +315,9 @@ class SubgraphDataset:
             Name of node field to use in final dataset
         edge_name_field : str
             Name of edge field to use in final dataset
+        node_type_field : str
+            Name of field that describes the node type. Only relevant if using
+            "bfs_diversity" in the sampler.
         n_node_range : tuple[int, int], optional
             The range of number of nodes for the sampled subgraphs. Default is (2, 10).
         p_perturbation_range : tuple[float, float], optional
@@ -339,6 +343,7 @@ class SubgraphDataset:
         self.perturber = perturber
         self.node_name_field = node_name_field
         self.edge_name_field = edge_name_field
+        self.node_type_field = node_type_field
         self.n_node_range = n_node_range
         self.p_perturbation_range = p_perturbation_range
         self.max_neighbors = max_neighbors
@@ -511,7 +516,7 @@ class SubgraphDataset:
                 n_nodes=n_nodes,
                 start_node=start_node,
                 max_neighbors=self.max_neighbors,
-                node_type_field="node_type",
+                node_type_field=self.node_type_field,
             )
 
             try:
