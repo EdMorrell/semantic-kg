@@ -1,3 +1,4 @@
+import json
 import pickle
 import hashlib
 from pathlib import Path
@@ -123,7 +124,7 @@ def bfs_node_diversity(
         # Renormalize probs
         neighbor_pvals /= neighbor_pvals.sum()
 
-        n_samples = min(len(neighbors), max_neighbours)
+        n_samples = min(len(neighbors), max_neighbours, n_nodes - len(visited))
         edges = np.random.choice(
             neighbors, size=n_samples, replace=False, p=neighbor_pvals
         )
@@ -349,6 +350,9 @@ class SubgraphDataset:
         self.max_neighbors = max_neighbors
         self.start_node_attrs = start_node_attrs
 
+        self.subgraph_hashes = set()
+        self.perturbed_subgraph_hashes = set()
+
         # Configure save directories
         root_dir = Path(__file__).parent.parent
         if not dataset_save_dir:
@@ -446,6 +450,118 @@ class SubgraphDataset:
             "perturbed_subgraph_hash": perturbed_subgraph_hash,
         }
 
+    def _check_perturbation(
+        self, p_subgraph_triples: list[dict[str, str]], log_item: dict[str, Any]
+    ) -> bool:
+        """Check that the perturbation log matches the perturbed subgraph"""
+        source_node = self.graph.nodes[log_item["source"]][self.node_name_field]
+
+        if log_item["type"] in ["edge_addition", "edge_replacement"]:
+            target_node = self.graph.nodes[log_item["target"]][self.node_name_field]
+            edge_name = log_item["metadata"][self.edge_name_field]
+            return any(
+                [
+                    (
+                        d["source_node"]["name"] == source_node  # type: ignore
+                        and d["target_node"]["name"] == target_node  # type: ignore
+                    )
+                    or (
+                        d["source_node"]["name"] == target_node  # type: ignore
+                        and d["target_node"]["name"] == source_node  # type: ignore
+                    )
+                    and d["relation"]["name"] == edge_name  # type: ignore
+                    for d in p_subgraph_triples
+                ]
+            )
+        elif log_item["type"] == "edge_deletion":
+            target_node = self.graph.nodes[log_item["target"]][self.node_name_field]
+
+            return not any(
+                [
+                    (
+                        d["source_node"]["name"] == source_node  # type: ignore
+                        and d["target_node"]["name"] == target_node  # type: ignore
+                    )
+                    or (
+                        d["source_node"]["name"] == target_node  # type: ignore
+                        and d["target_node"]["name"] == source_node  # type: ignore
+                    )
+                    for d in p_subgraph_triples
+                ]
+            )
+        elif log_item["type"] == "node_removal":
+            return not any(
+                [
+                    d["source_node"]["name"] == source_node  # type: ignore
+                    or d["target_node"]["name"] == source_node  # type: ignore
+                    for d in p_subgraph_triples
+                ]
+            )
+        else:
+            raise ValueError(f"Unsupported perturbation type: {log_item['type']}")
+
+    def validate_subgraph_dataset(self, df: pd.DataFrame) -> None:
+        """Function carries out a series of quality-checks on final dataset"""
+
+        def _check_triple_equality(
+            triple1: list[dict[str, str]], triple2: list[dict[str, str]]
+        ) -> bool:
+            set1 = set(json.dumps(d, sort_keys=True) for d in triple1)
+            set2 = set(json.dumps(d, sort_keys=True) for d in triple2)
+
+            return set1 == set2
+
+        def _get_n_nodes(triple: list[dict[str, str]]) -> int:
+            all_node_names = [d["source_node"]["name"] for d in triple] + [  # type: ignore
+                d["target_node"]["name"]  # type: ignore
+                for d in triple
+            ]
+            return len(set(all_node_names))
+
+        # Checks all subgraphs are unique
+        assert df["subgraph_hash"].nunique() == df.shape[0]
+        assert df["perturbed_subgraph_hash"].nunique() == df.shape[0]
+
+        # Checks similarity scores are within expected range
+        assert df["similarity"].min() >= 0
+        assert df["similarity"].max() <= 1
+
+        # Checks that no subgraphs are empty
+        assert df["subgraph_triples"].apply(len).min() > 0
+        assert df["perturbed_subgraph_triples"].apply(len).min() > 0
+
+        # Checks all subgraphs are within the expected node range
+        assert df["subgraph_triples"].apply(_get_n_nodes).max() <= self.n_node_range[1]
+        assert df["subgraph_triples"].apply(_get_n_nodes).min() >= self.n_node_range[0]
+
+        # Checks number of perturbations less than max expected
+        max_expected_p = self.p_perturbation_range[1] * self.n_node_range[1]
+        assert df["perturbation_log"].apply(len).max() <= max_expected_p
+
+        # Check no perturbed subgraph is identical to subgraph (ignoring order)
+        assert not df.apply(
+            lambda x: _check_triple_equality(
+                x["subgraph_triples"], x["perturbed_subgraph_triples"]
+            ),
+            axis=1,
+        ).any()
+
+        # Checks that no perturbed subgraph has more nodes than subgraph
+        # NOTE: If new perturbations are added this assertion may not hold
+        assert not (
+            df["perturbed_subgraph_triples"].apply(_get_n_nodes)
+            > df["subgraph_triples"].apply(_get_n_nodes)
+        ).any()
+
+        # Check that last perturbation in log is reflected in perturbed subgraph
+        # NOTE: If new perturbations are added these assertions may not hold
+        assert df.apply(
+            lambda x: self._check_perturbation(
+                x["perturbed_subgraph_triples"], x["perturbation_log"][-1]
+            ),
+            axis=1,
+        ).all()
+
     def _save_dataset(self, subgraph_dataset: pd.DataFrame) -> None:
         """Saves the final dataet to a path based on a unique hash"""
         # Generates a unique hash for the dataset based on the hashes of individual
@@ -520,6 +636,16 @@ class SubgraphDataset:
             )
 
             try:
+                subgraph_hash = self._get_graph_hash(subgraph)
+            except UnicodeEncodeError:
+                retries += 1
+                continue
+
+            if subgraph_hash in self.subgraph_hashes:
+                retries += 1
+                continue
+
+            try:
                 perturbed_subgraph = self.perturber.perturb(
                     subgraph, n_perturbations=n_perturbations
                 )
@@ -527,11 +653,19 @@ class SubgraphDataset:
                 retries += 1
                 continue
 
-            # Save both subgraphs and collect unique IDs
-            subgraph_hash = self._get_graph_hash(subgraph)
-            perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
+            try:
+                perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
+            except UnicodeDecodeError:
+                retries += 1
+                continue
+
+            if perturbed_subgraph_hash in self.perturbed_subgraph_hashes:
+                retries += 1
+                continue
 
             if self.save_subgraphs:
+                self.subgraph_hashes.add(subgraph_hash)
+                self.perturbed_subgraph_hashes.add(perturbed_subgraph_hash)
                 self._save_subgraphs(
                     subgraph, perturbed_subgraph, subgraph_hash, perturbed_subgraph_hash
                 )
@@ -550,6 +684,7 @@ class SubgraphDataset:
 
         if idx == n_iter:
             subgraph_dataset = pd.DataFrame(all_data).T
+            self.validate_subgraph_dataset(subgraph_dataset)
             self._save_dataset(subgraph_dataset)
 
             return subgraph_dataset
