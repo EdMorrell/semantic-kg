@@ -20,12 +20,9 @@ from semantic_kg.utils import get_hishel_http_client
 
 
 OREGANO_REPLACE_MAP: dict[str, list[str]] = {
-    "increase_activity": ["decrease_activity"],
-    "decrease_activity": ["increase_activity"],
-    "increase_effect": ["decrease_effect"],
-    "decrease_effect": ["increase_effect"],
-    "increase_efficacy": ["decrease_efficacy"],
-    "decrease_efficacy": ["increase_efficacy"],
+    "COMPOUND_ACTIVITY": ["increase_activity", "decrease_activity"],
+    "COMPOUND_COMPOUND": ["increase_activity", "decrease_activity"],
+    "COMPOUND_EFFECT": ["increase_effect", "decrease_effect"],
 }
 
 
@@ -37,12 +34,16 @@ def load_triple_df(fpath: str) -> pd.DataFrame:
     return df
 
 
-def create_relation_map(triple_df: pd.DataFrame) -> dict[str, list[str]]:
+def get_node_types(triple_df: pd.DataFrame) -> pd.DataFrame:
     triple_df["subject_type"] = triple_df["subject"].apply(lambda x: x.split(":")[0])
     triple_df["object_type"] = triple_df["object"].apply(lambda x: x.split(":")[0])
 
     triple_df["node_types"] = triple_df["subject_type"] + "_" + triple_df["object_type"]
 
+    return triple_df
+
+
+def create_relation_map(triple_df: pd.DataFrame) -> dict[str, list[str]]:
     return (
         triple_df[["node_types", "predicate"]]
         .groupby("node_types")
@@ -404,6 +405,34 @@ class OreganoLoader:
 
         return node_attr_map
 
+    def _merge_duplicate_entities(
+        self, df: pd.DataFrame, entity_map: dict[str, str]
+    ) -> pd.DataFrame:
+        # Find all entities that map to the same value
+        reverse_map = {}
+        for k, v in entity_map.items():
+            reverse_map.setdefault(v, []).append(k)
+
+        # Finds instances of duplicates in dataframe and merges into first instance
+        replace_map = {}
+        for k, v in reverse_map.items():
+            if len(v) < 2:
+                continue
+
+            # Map ensure we only merge duplicate entities if they're of the same type
+            first_instance_type_map = {v[0].split(":")[0]: v[0]}
+            for id in v[1:]:
+                id_type = id.split(":")[0]
+                if id_type in first_instance_type_map:
+                    replace_map[id] = first_instance_type_map[id_type]
+                else:
+                    first_instance_type_map[id_type] = id
+
+        df["subject"] = df["subject"].map(lambda x: replace_map.get(x, x))
+        df["object"] = df["object"].map(lambda x: replace_map.get(x, x))
+
+        return df
+
     def load(self) -> nx.Graph:
         df = load_triple_df(str(self.triple_fpath))
 
@@ -421,8 +450,14 @@ class OreganoLoader:
         entities = set(entity_map.keys())
         df = df[(df["subject"].isin(entities)) & (df["object"].isin(entities))]
 
+        df = self._merge_duplicate_entities(df, entity_map)
+
         g = nx.from_pandas_edgelist(
-            df=df, source="subject", target="object", edge_attr=["predicate"]
+            df=df,
+            source="subject",
+            target="object",
+            edge_attr=["predicate"],
+            create_using=nx.DiGraph,
         )
         node_attr_map = self._create_node_attr_map(entity_map)
         nx.set_node_attributes(g, node_attr_map)
@@ -460,15 +495,15 @@ def build_oregano_perturber(
     replace_map: dict[str, list[str]],
 ) -> GraphPerturber:
     edge_addition_perturbation = EdgeAdditionPerturbation(
-        node_name_id="node_id",
-        valid_edges=valid_edges,
+        node_type_id="node_type",
+        valid_edge_types=valid_edges,
         edge_attribute_mapper=OreganoEdgeAttributeMapper(relation_map=relation_map),
     )
 
     edge_deletion_perturbation = EdgeDeletionPerturbation()
 
     edge_replacement_perturbation = EdgeReplacementPerturbation(
-        node_name_id="node_id",
+        node_type_id="node_type",
         edge_name_id="predicate",
         replace_map=replace_map,
         edge_attribute_mapper=OreganoEdgeAttributeMapper(relation_map=relation_map),
@@ -483,18 +518,26 @@ def build_oregano_perturber(
             edge_replacement_perturbation,
             node_removal_perturbation,
         ],
+        node_id_field="node_id",
+        edge_id_field="predicate",
         p_prob=[0.3, 0.3, 0.3, 0.1],
     )
 
 
 if __name__ == "__main__":
+    import numpy as np
     from semantic_kg.sampling import SubgraphDataset, SubgraphSampler
+
+    random.seed(42)
+    np.random.seed(42)
 
     triple_fpath = "datasets/oregano/OREGANO_V2.1.tsv"
     df = load_triple_df(triple_fpath)
+    df = df.drop_duplicates()
 
+    df = get_node_types(df)
     relation_map = create_relation_map(df)
-    valid_edges = df["predicate"].unique().tolist()
+    valid_edges = df["node_types"].unique().tolist()
 
     oregano_loader = OreganoLoader("datasets/oregano")
     g = oregano_loader.load()
@@ -515,5 +558,8 @@ if __name__ == "__main__":
         perturber=perturber,
         node_name_field="display_name",
         edge_name_field="predicate",
+        n_node_range=(3, 10),
+        # start_node_attrs={"node_type": ["DISEASE", "COMPOUND"]},
+        save_subgraphs=False,
     )
-    subgraph.generate(5, 30)
+    sample_df = subgraph.generate(1000, 10000)
