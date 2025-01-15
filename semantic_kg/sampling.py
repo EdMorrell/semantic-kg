@@ -115,6 +115,9 @@ def bfs_node_diversity(
         current = queue.popleft()
 
         neighbors = list(graph.neighbors(current))
+        if not neighbors:
+            continue
+
         neighbor_pvals = np.array(
             [
                 node_pvals[pval_idx_map[graph.nodes[n][node_type_field]]]
@@ -205,8 +208,7 @@ class SubgraphSampler:
         subgraph_edges = SubgraphSampler.METHOD_MAP[self.method](
             self.g, start_node, n_nodes, max_neighbors, **kwargs
         )
-        nodes = [item for t in subgraph_edges for item in t]
-        return self.g.subgraph(nodes)
+        return self.g.edge_subgraph(subgraph_edges)
 
 
 def generate_triples(
@@ -215,7 +217,7 @@ def generate_triples(
     edge_name_field: str,
     node_attr_fields: Optional[list[str]] = None,
     edge_attr_fields: Optional[list[str]] = None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, dict[str, str]]]:
     """
     Generate triples from a graph.
 
@@ -285,6 +287,12 @@ def generate_triples(
     return triplets
 
 
+def _find_repeat_nodes(subgraph: nx.Graph, node_name_field: str) -> bool:
+    nodes = list(set(subgraph.nodes))
+    node_names = [subgraph.nodes[n][node_name_field] for n in nodes]
+    return len(node_names) > len(set(node_names))
+
+
 class SubgraphDataset:
     def __init__(
         self,
@@ -297,7 +305,7 @@ class SubgraphDataset:
         n_node_range: tuple[int, int] = (3, 12),
         p_perturbation_range: tuple[float, float] = (0.1, 0.7),
         max_neighbors: int = 3,
-        start_node_attrs: Optional[dict[str, str]] = None,
+        start_node_attrs: Optional[dict[str, list[str]]] = None,
         dataset_save_dir: Optional[Path] = None,
         save_subgraphs: bool = True,
         subgraph_save_dir: Optional[Path] = None,
@@ -326,7 +334,7 @@ class SubgraphDataset:
         max_neighbors : int, optional
             The maximum number of neighbors to consider when sampling subgraphs.
             Default is 3.
-        start_node_attrs : Optional[dict[str, str]], optional
+        start_node_attrs : Optional[dict[str, list[str]]], optional
             The attributes of the start node for the sampled subgraphs.
             Default is None.
         dataset_save_dir : Optional[Path], optional
@@ -374,7 +382,7 @@ class SubgraphDataset:
                 for n in all_nodes
                 if any(
                     [
-                        self.graph.nodes[n][k] == v
+                        any(self.graph.nodes[n][k] == i_v for i_v in v)
                         for k, v in self.start_node_attrs.items()
                     ]
                 )
@@ -451,7 +459,9 @@ class SubgraphDataset:
         }
 
     def _check_perturbation(
-        self, p_subgraph_triples: list[dict[str, str]], log_item: dict[str, Any]
+        self,
+        p_subgraph_triples: list[dict[str, dict[str, str]]],
+        log_item: dict[str, Any],
     ) -> bool:
         """Check that the perturbation log matches the perturbed subgraph"""
         source_node = self.graph.nodes[log_item["source"]][self.node_name_field]
@@ -513,8 +523,8 @@ class SubgraphDataset:
 
         def _get_n_nodes(triple: list[dict[str, str]]) -> int:
             all_node_names = [d["source_node"]["name"] for d in triple] + [  # type: ignore
-                d["target_node"]["name"]  # type: ignore
-                for d in triple
+                d["target_node"]["name"]
+                for d in triple  # type: ignore
             ]
             return len(set(all_node_names))
 
@@ -635,6 +645,13 @@ class SubgraphDataset:
                 node_type_field=self.node_type_field,
             )
 
+            # Some subgraphs (e.g. Oregano) have the same entity under
+            # different types, so this skips any graphs where a node appears
+            # more than once
+            if _find_repeat_nodes(subgraph, self.node_name_field):
+                retries += 1
+                continue
+
             try:
                 subgraph_hash = self._get_graph_hash(subgraph)
             except UnicodeEncodeError:
@@ -663,12 +680,18 @@ class SubgraphDataset:
                 retries += 1
                 continue
 
+            # Catches instances where node-removal removes all edges
+            if len(perturbed_subgraph.edges) == 0:
+                retries += 1
+                continue
+
             if self.save_subgraphs:
-                self.subgraph_hashes.add(subgraph_hash)
-                self.perturbed_subgraph_hashes.add(perturbed_subgraph_hash)
                 self._save_subgraphs(
                     subgraph, perturbed_subgraph, subgraph_hash, perturbed_subgraph_hash
                 )
+
+            self.subgraph_hashes.add(subgraph_hash)
+            self.perturbed_subgraph_hashes.add(perturbed_subgraph_hash)
 
             row_data = self._format_row_data(
                 subgraph,
@@ -692,5 +715,5 @@ class SubgraphDataset:
             raise ValueError(
                 f"Max retries {max_retries} exceeded. "
                 f"Unable to generate {n_iter} subgraphs."
-                "Consider increasing `max_retries` or reducing `n_iter`"
+                " Consider increasing `max_retries` or reducing `n_iter`"
             )
