@@ -194,6 +194,11 @@ def _extract_entity_map_from_metadata(fpath: str) -> dict[str, str]:
     return result
 
 
+def _remove_id_strings(entity_map: dict[str, str]) -> dict[str, str]:
+    """Removes InChIKey entities (this will create some FPs)"""
+    return {k: v for k, v in entity_map.items() if len(v) != 27}
+
+
 class OreganoLoader:
     NODE_ATTR_MAP = {
         "activity": {
@@ -433,7 +438,23 @@ class OreganoLoader:
 
         return df
 
-    def load(self) -> nx.Graph:
+    def load(
+        self, detect_ids: bool = True, max_entity_len: Optional[int] = 50
+    ) -> nx.Graph:
+        """Loads Oregano as a NetworkX graph
+
+        Parameters
+        ----------
+        detect_ids : bool, optional
+            If True then will search for InChiKey ID nodes and remove, by default True
+        max_entity_len : Optional[int], optional
+            If True then will remove nodes which have very long names, by default 50
+
+        Returns
+        -------
+        nx.Graph
+            Networkx graph
+        """
         df = load_triple_df(str(self.triple_fpath))
 
         entity_map = self._load_entity_map()
@@ -446,6 +467,14 @@ class OreganoLoader:
         if self.incl_ncbi_genes:
             ncbi_gene_map = self._load_gene_map(df, entity_map)
             entity_map.update(ncbi_gene_map)
+
+        if detect_ids:
+            entity_map = _remove_id_strings(entity_map)
+
+        if max_entity_len:
+            entity_map = {
+                k: v for k, v in entity_map.items() if len(v) < max_entity_len
+            }
 
         entities = set(entity_map.keys())
         df = df[(df["subject"].isin(entities)) & (df["object"].isin(entities))]
