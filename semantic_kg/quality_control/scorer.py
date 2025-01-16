@@ -140,7 +140,9 @@ class KGReconstructionScorer:
         Returns
         -------
         float
-            A float indicating the proportion of correctly reconstructed triples
+            A binary score indicating whether the subgraph was successfully
+            reconstructed. 1.0 indicates perfect reconstruction, 0.0 indicates
+            imperfect reconstruction.
 
         Raises
         ------
@@ -159,10 +161,15 @@ class KGReconstructionScorer:
             self.increase_tokens_on_retry,
         )
         reconstructed_triples = scorer_response["triples"]
+        if len(reconstructed_triples) != len(triples):
+            return 0
 
         scores = self.scorer.score(triples, reconstructed_triples)
 
         # Logs reconstructed triples as attribute for debugging purposes
         self.reconstructed_triples = reconstructed_triples
 
-        return sum(scores) / len(scores)
+        if sum(scores) == len(scores):
+            return 1.0
+        else:
+            return 0.0
