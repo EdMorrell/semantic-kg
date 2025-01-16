@@ -5,7 +5,7 @@ from typing import Optional
 from openai import AzureOpenAI
 
 from semantic_kg.models.base import BaseTextGeneration
-from semantic_kg.models.get_hishel_http_client import get_hishel_http_client
+from semantic_kg.utils import get_hishel_http_client
 
 
 class InvalidResponseError(Exception):
