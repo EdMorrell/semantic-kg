@@ -143,7 +143,12 @@ class EdgeAdditionPerturbation(BasePerturbation):
                 else:
                     edge_data = {}
 
-                perturbed_graph = nx.Graph(graph)
+                # Checks if graph is a directed graph
+                if isinstance(graph, nx.DiGraph):
+                    perturbed_graph = nx.DiGraph(graph)
+                else:
+                    perturbed_graph = nx.Graph(graph)
+
                 perturbed_graph.add_edge(src_node, target_node, **edge_data)
 
                 self._log_perturbation(
@@ -180,7 +185,12 @@ class EdgeDeletionPerturbation(BasePerturbation):
                 while neighbor_idx < len(neighbors):
                     neighbor = neighbors[neighbor_idx]
                     if len(graph.edges(neighbor)) > 1:
-                        perturbed_graph = nx.Graph(graph)
+                        # Checks if graph is a directed graph
+                        if isinstance(graph, nx.DiGraph):
+                            perturbed_graph = nx.DiGraph(graph)
+                        else:
+                            perturbed_graph = nx.Graph(graph)
+
                         perturbed_graph.remove_edge(node, neighbor)
 
                         self._log_perturbation(
@@ -246,6 +256,11 @@ class EdgeReplacementPerturbation(BasePerturbation):
             if edge_name in self.replace_map and edge not in self.memory:
                 current_value = graph[edge[0]][edge[1]][self.edge_name_id]
 
+                if current_value not in self.replace_map[edge_name]:
+                    raise NoValidEdgeError(
+                        f"`replace_map` does not contain an alternative value for {current_value}"
+                    )
+
                 alternative_values = [
                     v for v in self.replace_map[edge_name] if v != current_value
                 ]
@@ -255,7 +270,11 @@ class EdgeReplacementPerturbation(BasePerturbation):
                     src_node, target_node, edge_value=new_value
                 )
 
-                perturbed_graph = nx.Graph(graph)
+                # Checks if graph is a directed graph
+                if isinstance(graph, nx.DiGraph):
+                    perturbed_graph = nx.DiGraph(graph)
+                else:
+                    perturbed_graph = nx.Graph(graph)
 
                 # Remove the old edge and replace with a new one
                 perturbed_graph.remove_edge(edge[0], edge[1])
@@ -307,7 +326,12 @@ class NodeRemovalPerturbation(BasePerturbation):
             for node in p_graph.nodes
             if p_graph.degree[node] == 0  # type: ignore
         ]
-        perturbed_graph = nx.Graph(p_graph)
+
+        if isinstance(p_graph, nx.DiGraph):
+            perturbed_graph = nx.DiGraph(p_graph)
+        else:
+            perturbed_graph = nx.Graph(p_graph)
+
         perturbed_graph.remove_nodes_from(isolated_nodes)
 
         return perturbed_graph
@@ -353,7 +377,12 @@ class NodeRemovalPerturbation(BasePerturbation):
             if self._check_is_star_center(graph, node):
                 raise NoValidNodeError("Node is the center of a star graph")
 
-        perturbed_graph = nx.Graph(graph)
+        # Checks if graph is a directed graph
+        if isinstance(graph, nx.DiGraph):
+            perturbed_graph = nx.DiGraph(graph)
+        else:
+            perturbed_graph = nx.Graph(graph)
+
         perturbed_graph.remove_node(node)
         self.edit_count += self._get_edit_count(graph, perturbed_graph, node)
         perturbed_graph = self._clean_isolated_nodes(perturbed_graph)
@@ -452,7 +481,11 @@ class GraphPerturber:
     def perturb(
         self, graph: nx.Graph, n_perturbations: int, max_retries: Optional[int] = None
     ) -> nx.Graph:
-        p_graph = nx.Graph(graph)
+        # Checks if graph is a directed graph
+        if isinstance(graph, nx.DiGraph):
+            p_graph = nx.DiGraph(graph)
+        else:
+            p_graph = nx.Graph(graph)
 
         if not max_retries:
             max_retries = max(10, 3 * n_perturbations)

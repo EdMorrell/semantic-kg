@@ -8,6 +8,29 @@ from typing import Optional
 from semantic_kg import perturbation
 
 
+@pytest.fixture
+def test_di_graph() -> nx.DiGraph:
+    # Create a simple graph
+    graph = nx.DiGraph()
+
+    graph.add_node("A", id="A", node_type="allowed")
+    graph.add_node("B", id="B", node_type="allowed")
+    graph.add_node("C", id="C", node_type="allowed")
+    graph.add_node("D", id="D", node_type="allowed")
+    graph.add_node("E", id="E", node_type="allowed")
+    graph.add_node("F", id="F", node_type="allowed")
+    graph.add_node("G", id="G", node_type="allowed")
+
+    graph.add_edge("A", "B", effect="increase")
+    graph.add_edge("A", "C", effect="increase")
+    graph.add_edge("A", "D", effect="increase")
+    graph.add_edge("A", "E", effect="increase")
+    graph.add_edge("B", "F", effect="increase")
+    graph.add_edge("B", "G", effect="increase")
+
+    return graph
+
+
 class TestEdgeAdditionPerturbation:
     @pytest.fixture(scope="class")
     def test_graph(self) -> nx.Graph:
@@ -92,6 +115,11 @@ class TestEdgeAdditionPerturbation:
         assert perturber.edit_count == 0
         assert perturber.perturbation_log == []
 
+    def test_create_directed(self, test_di_graph: nx.DiGraph) -> None:
+        perturber = perturbation.EdgeAdditionPerturbation(node_type_id="id")
+        p_graph = perturber.create(test_di_graph)
+        assert isinstance(p_graph, nx.DiGraph)
+
 
 class TestEdgeDeletionPerturbation:
     @pytest.fixture(scope="class")
@@ -140,6 +168,11 @@ class TestEdgeDeletionPerturbation:
         # Once A-B edge deleted, no edges are valid for deletion
         with pytest.raises(perturbation.NoValidEdgeError):
             _ = perturber.create(p_graph)
+
+    def test_create_directed(self, test_di_graph: nx.DiGraph) -> None:
+        perturber = perturbation.EdgeDeletionPerturbation()
+        p_graph = perturber.create(test_di_graph)
+        assert isinstance(p_graph, nx.DiGraph)
 
 
 class TestEdgeReplacementPerturbation:
@@ -235,6 +268,22 @@ class TestEdgeReplacementPerturbation:
         with pytest.raises(perturbation.NoValidEdgeError):
             _ = perturber.create(modified_graph)
 
+    def test_create_directed(
+        self,
+        test_di_graph: nx.DiGraph,
+        test_attribute_mapper: perturbation.EdgeAttributeMapper,
+    ) -> None:
+        perturber = perturbation.EdgeReplacementPerturbation(
+            node_type_id="node_type",
+            edge_name_id="effect",
+            replace_map={
+                "allowed_allowed": ["increase", "decrease"],
+            },
+            edge_attribute_mapper=test_attribute_mapper,
+        )
+        p_graph = perturber.create(test_di_graph)
+        assert isinstance(p_graph, nx.DiGraph)
+
 
 class TestNodeRemovalPerturbation:
     @pytest.fixture(scope="class")
@@ -312,6 +361,11 @@ class TestNodeRemovalPerturbation:
         perturber = perturbation.NodeRemovalPerturbation()
         with pytest.raises(perturbation.NoValidNodeError):
             _ = perturber.create(graph, "A")
+
+    def test_create_directed(self, test_di_graph: nx.DiGraph) -> None:
+        perturber = perturbation.NodeRemovalPerturbation()
+        p_graph = perturber.create(test_di_graph)
+        assert isinstance(p_graph, nx.DiGraph)
 
 
 class MockPerturbation(perturbation.BasePerturbation):
