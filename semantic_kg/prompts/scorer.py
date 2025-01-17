@@ -44,6 +44,24 @@ Examples:
 
 """
 
+kg_extractor_system_prompt_template_directed_valid_directions = """You will be provided with a text describing the directed relationships between various biological entities
+
+You will also be provided with a list of entities contained within that statement.
+
+Entities are related to the other entities via the following directed relationships: {edge_types}
+
+Your goal is to extract the relationships between the entities as a directed graph and represent that graph as a list of triples in valid json using the following schema: {response_schema}
+
+The triples should be represented in directed order with the relation direction going from "source_node" to "target_node"
+
+The valid edge directions are {edge_directions}
+
+Examples:
+
+{fewshot_examples}
+
+"""
+
 
 # NOTE: Not recommended to use as 2-step method appeared better in practice
 single_step_kg_extractor_system_prompt_template = """You will be provided with a statement describing the relationship between various biological entities.
