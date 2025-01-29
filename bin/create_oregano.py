@@ -30,7 +30,10 @@ def parse_args() -> argparse.Namespace:
         "--subgraph_fpath",
         type=Path,
         help="Path to subgraph dataset",
-        # TODO: Add a default
+        default=ROOT_DIR
+        / "datasets"
+        / "oregano"
+        / "83c993a0263a1dd956674d15de661864.csv",
     )
     parser.add_argument(
         "--model_type",

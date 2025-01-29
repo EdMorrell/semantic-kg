@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
         default=ROOT_DIR
         / "datasets"
         / "prime_kg"
-        / "73fef7a77fd16f36852cbfad309f976d.csv",
+        / "c168f03f1cfda6ffa0dd452e271d958d.csv",
     )
     parser.add_argument(
         "--model_type",
