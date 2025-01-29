@@ -6,6 +6,7 @@ import openai
 import backoff
 import pandas as pd
 from tqdm import tqdm
+from openai import BadRequestError
 
 from semantic_kg import utils
 from semantic_kg.quality_control.scorer import ScorerProtocol
@@ -188,7 +189,12 @@ class NLGenerationPipeline:
             for qc_checker in self.quality_scorers:  # type: ignore
                 try:
                     score = qc_checker["scorer"].score(response, triples)
-                except (KeyError, TypeError, InvalidResponseError) as err:
+                except (
+                    KeyError,
+                    TypeError,
+                    InvalidResponseError,
+                    BadRequestError,
+                ) as err:
                     print(f"Encountered following error for scorer: {err}")
                     passes_all_checks = False
                     break
