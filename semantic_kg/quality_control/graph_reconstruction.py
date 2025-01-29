@@ -104,6 +104,8 @@ class TripleCompare:
             return triple_dict["name"]
         elif isinstance(triple_dict, str):
             return triple_dict
+        elif isinstance(triple_dict, list):
+            return triple_dict[0]["name"]
         else:
             raise ValueError(f"Unknown data-type for triple: {type(triple_dict)}")
 
@@ -114,12 +116,34 @@ class TripleCompare:
         all_triple_data = []
         for triple in subgraph_triples:
             triple_data = {}
+
+            # TODO: Refactor this to be more robust
+            if isinstance(triple, list):
+                if len(triple) > 1:
+                    raise ValueError("Nested triples must be of length 1")
+
+                # Very rare case where triple is empty list (simply skip over)
+                if len(triple) == 0:
+                    continue
+
+                triple = triple[0]  # type: ignore
+
             if self.match_nodes:
-                triple_data["src"] = self._get_data(triple["source_node"])
+                # TODO: Refactor so check occurs first rather than relying on error-handling
+                try:
+                    triple_data["src"] = self._get_data(triple["source_node"])
+                except KeyError:
+                    triple_data["src"] = ""
             if self.match_edges:
-                triple_data["relation"] = self._get_data(triple["relation"])
+                try:
+                    triple_data["relation"] = self._get_data(triple["relation"])
+                except KeyError:
+                    triple_data["relation"] = ""
             if self.match_nodes:
-                triple_data["target"] = self._get_data(triple["target_node"])
+                try:
+                    triple_data["target"] = self._get_data(triple["target_node"])
+                except KeyError:
+                    triple_data["target"] = ""
 
             all_triple_data.append(triple_data)
 
