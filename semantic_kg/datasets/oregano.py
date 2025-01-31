@@ -5,16 +5,11 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-import networkx as nx
 from tqdm import tqdm
 from hishel import CacheClient
 
 from semantic_kg.perturbation import (
-    EdgeAdditionPerturbation,
-    EdgeDeletionPerturbation,
-    EdgeReplacementPerturbation,
-    GraphPerturber,
-    NodeRemovalPerturbation,
+    build_perturber,
 )
 from semantic_kg.utils import get_hishel_http_client
 
@@ -41,15 +36,6 @@ def get_node_types(triple_df: pd.DataFrame) -> pd.DataFrame:
     triple_df["node_types"] = triple_df["subject_type"] + "_" + triple_df["object_type"]
 
     return triple_df
-
-
-def create_relation_map(triple_df: pd.DataFrame) -> dict[str, list[str]]:
-    return (
-        triple_df[["node_types", "predicate"]]
-        .groupby("node_types")
-        .agg(lambda x: list(x.unique()))["predicate"]
-        .to_dict()
-    )
 
 
 def get_reactome_pathway_name(entity: str, client: Optional[CacheClient] = None) -> str:
@@ -440,21 +426,7 @@ class OreganoLoader:
 
     def load(
         self, detect_ids: bool = True, max_entity_len: Optional[int] = 50
-    ) -> nx.Graph:
-        """Loads Oregano as a NetworkX graph
-
-        Parameters
-        ----------
-        detect_ids : bool, optional
-            If True then will search for InChiKey ID nodes and remove, by default True
-        max_entity_len : Optional[int], optional
-            If True then will remove nodes which have very long names, by default 50
-
-        Returns
-        -------
-        nx.Graph
-            Networkx graph
-        """
+    ) -> pd.DataFrame:
         df = load_triple_df(str(self.triple_fpath))
 
         entity_map = self._load_entity_map()
@@ -481,17 +453,23 @@ class OreganoLoader:
 
         df = self._merge_duplicate_entities(df, entity_map)
 
-        g = nx.from_pandas_edgelist(
-            df=df,
-            source="subject",
-            target="object",
-            edge_attr=["predicate"],
-            create_using=nx.DiGraph,
-        )
-        node_attr_map = self._create_node_attr_map(entity_map)
-        nx.set_node_attributes(g, node_attr_map)
+        df["subject_name"] = df["subject"].map(entity_map)
+        df["object_name"] = df["object"].map(entity_map)
+        df["subject_type"] = df["subject"].apply(lambda x: x.split(":")[0])
+        df["object_type"] = df["object"].apply(lambda x: x.split(":")[0])
 
-        return g
+        df = df.rename({"subject": "subject_id", "object": "object_id"}, axis=1)
+        return df[
+            [
+                "subject_id",
+                "subject_name",
+                "subject_type",
+                "predicate",
+                "object_id",
+                "object_name",
+                "object_type",
+            ]
+        ]
 
 
 class OreganoEdgeAttributeMapper:
@@ -518,44 +496,10 @@ class OreganoEdgeAttributeMapper:
         }
 
 
-def build_oregano_perturber(
-    relation_map: dict[str, list[str]],
-    valid_edges: list[str],
-    replace_map: dict[str, list[str]],
-) -> GraphPerturber:
-    edge_addition_perturbation = EdgeAdditionPerturbation(
-        node_type_id="node_type",
-        valid_edge_types=valid_edges,
-        edge_attribute_mapper=OreganoEdgeAttributeMapper(relation_map=relation_map),
-    )
-
-    edge_deletion_perturbation = EdgeDeletionPerturbation()
-
-    edge_replacement_perturbation = EdgeReplacementPerturbation(
-        node_type_id="node_type",
-        edge_name_id="predicate",
-        replace_map=replace_map,
-        edge_attribute_mapper=OreganoEdgeAttributeMapper(relation_map=relation_map),
-    )
-
-    node_removal_perturbation = NodeRemovalPerturbation()
-
-    return GraphPerturber(
-        perturbations=[
-            edge_addition_perturbation,
-            edge_deletion_perturbation,
-            edge_replacement_perturbation,
-            node_removal_perturbation,
-        ],
-        node_id_field="node_id",
-        edge_id_field="predicate",
-        p_prob=[0.3, 0.3, 0.3, 0.1],
-    )
-
-
 if __name__ == "__main__":
     import numpy as np
     from semantic_kg.sampling import SubgraphDataset, SubgraphSampler
+    from semantic_kg.datasets import KGLoader, create_edge_map, get_valid_node_pairs
 
     random.seed(42)
     np.random.seed(42)
@@ -565,30 +509,48 @@ if __name__ == "__main__":
     df = df.drop_duplicates()
 
     df = get_node_types(df)
-    relation_map = create_relation_map(df)
-    valid_edges = df["node_types"].unique().tolist()
 
     oregano_loader = OreganoLoader("datasets/oregano")
-    g = oregano_loader.load()
+    df = oregano_loader.load()
 
-    perturber = build_oregano_perturber(
-        relation_map=relation_map,
-        valid_edges=valid_edges,
-        replace_map=OREGANO_REPLACE_MAP,
+    kg_loader = KGLoader(
+        src_node_id_field="subject_id",
+        src_node_type_field="subject_type",
+        src_node_name_field="subject_name",
+        edge_name_field="predicate",
+        target_node_id_field="object_id",
+        target_node_type_field="object_type",
+        target_node_name_field="object_name",
+    )
+    g = kg_loader.load(triple_df=df, directed=True)
+
+    edge_map = kg_loader.create_edge_map(df, directed=True)
+    edge_map = create_edge_map(
+        df,
+        src_node_type_field="subject_type",
+        target_node_type_field="object_type",
+        edge_name_field="predicate",
+    )
+    replace_map = {k: v for k, v in edge_map.items() if len(v) > 1}
+    valid_node_pairs = get_valid_node_pairs(
+        df, src_node_type_field="subject_type", target_node_type_field="object_type"
     )
 
-    sampler = SubgraphSampler(
-        graph=g, node_index_field="node_id", method="bfs_node_diversity"
+    perturber = build_perturber(
+        edge_map=edge_map,
+        valid_node_pairs=valid_node_pairs,  # type: ignore
+        replace_map=replace_map,
+        directed=True,
+        p_prob=[0.3, 0.3, 0.3, 0.1],
     )
+
+    sampler = SubgraphSampler(graph=g, method="bfs_node_diversity")
 
     subgraph = SubgraphDataset(
         graph=g,
         subgraph_sampler=sampler,
         perturber=perturber,
-        node_name_field="display_name",
-        edge_name_field="predicate",
         n_node_range=(3, 10),
-        # start_node_attrs={"node_type": ["DISEASE", "COMPOUND"]},
         save_subgraphs=False,
     )
     sample_df = subgraph.generate(1000, 10000)
