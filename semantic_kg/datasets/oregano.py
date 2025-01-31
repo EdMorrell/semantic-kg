@@ -14,10 +14,10 @@ from semantic_kg.perturbation import (
 from semantic_kg.utils import get_hishel_http_client
 
 
-OREGANO_REPLACE_MAP: dict[str, list[str]] = {
-    "COMPOUND_ACTIVITY": ["increase_activity", "decrease_activity"],
-    "COMPOUND_COMPOUND": ["increase_activity", "decrease_activity"],
-    "COMPOUND_EFFECT": ["increase_effect", "decrease_effect"],
+OREGANO_REPLACE_MAP: dict[tuple[str, str], list[str]] = {
+    ("COMPOUND", "ACTIVITY"): ["increase_activity", "decrease_activity"],
+    ("COMPOUND", "COMPOUND"): ["increase_activity", "decrease_activity"],
+    ("COMPOUND", "EFFECT"): ["increase_effect", "decrease_effect"],
 }
 
 
@@ -25,17 +25,7 @@ def load_triple_df(fpath: str) -> pd.DataFrame:
     df = pd.read_csv(fpath, sep="\t", header=None)
     df = df.rename(columns={0: "subject", 1: "predicate", 2: "object"})
     df = df[df["predicate"] != "has_code"]
-
     return df
-
-
-def get_node_types(triple_df: pd.DataFrame) -> pd.DataFrame:
-    triple_df["subject_type"] = triple_df["subject"].apply(lambda x: x.split(":")[0])
-    triple_df["object_type"] = triple_df["object"].apply(lambda x: x.split(":")[0])
-
-    triple_df["node_types"] = triple_df["subject_type"] + "_" + triple_df["object_type"]
-
-    return triple_df
 
 
 def get_reactome_pathway_name(entity: str, client: Optional[CacheClient] = None) -> str:
@@ -383,19 +373,6 @@ class OreganoLoader:
 
         return gene_map
 
-    @staticmethod
-    def _create_node_attr_map(entity_map: dict[str, str]) -> dict[str, dict[str, str]]:
-        node_attr_map = {}
-        for k, v in entity_map.items():
-            node_type, node_id = k.split(":")
-            node_attr_map[k] = {
-                "node_id": node_id,
-                "node_type": node_type,
-                "display_name": v,
-            }
-
-        return node_attr_map
-
     def _merge_duplicate_entities(
         self, df: pd.DataFrame, entity_map: dict[str, str]
     ) -> pd.DataFrame:
@@ -472,30 +449,6 @@ class OreganoLoader:
         ]
 
 
-class OreganoEdgeAttributeMapper:
-    def __init__(self, relation_map: dict[str, list[str]]) -> None:
-        self.relation_map = relation_map
-
-    def get_attributes(
-        self,
-        src_node: dict[str, str],
-        target_node: dict[str, str],
-        edge_value: Optional[str] = None,
-    ) -> dict[str, str]:
-        src_node_type = src_node["node_type"]
-        target_node_type = target_node["node_type"]
-        edge_name = f"{src_node_type}_{target_node_type}"
-
-        if not edge_value:
-            relation = random.choice(self.relation_map[edge_name])
-        else:
-            relation = edge_value
-
-        return {
-            "predicate": relation,
-        }
-
-
 if __name__ == "__main__":
     import numpy as np
     from semantic_kg.sampling import SubgraphDataset, SubgraphSampler
@@ -503,12 +456,6 @@ if __name__ == "__main__":
 
     random.seed(42)
     np.random.seed(42)
-
-    triple_fpath = "datasets/oregano/OREGANO_V2.1.tsv"
-    df = load_triple_df(triple_fpath)
-    df = df.drop_duplicates()
-
-    df = get_node_types(df)
 
     oregano_loader = OreganoLoader("datasets/oregano")
     df = oregano_loader.load()
@@ -539,7 +486,7 @@ if __name__ == "__main__":
     perturber = build_perturber(
         edge_map=edge_map,
         valid_node_pairs=valid_node_pairs,  # type: ignore
-        replace_map=replace_map,
+        replace_map=OREGANO_REPLACE_MAP,
         directed=True,
         p_prob=[0.3, 0.3, 0.3, 0.1],
     )
