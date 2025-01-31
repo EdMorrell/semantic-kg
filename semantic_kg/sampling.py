@@ -14,6 +14,12 @@ from tqdm import tqdm
 from semantic_kg.perturbation import GraphPerturber, NoValidEdgeError
 
 
+class NodeSamplingError(Exception):
+    """Error class for node-sampling issues"""
+
+    pass
+
+
 def bfs(
     graph: nx.Graph,
     start_node: str | int,
@@ -63,6 +69,11 @@ def bfs(
                 visited.add(ref)
                 queue.append(ref)
                 output.append((current, ref))
+
+    if len(visited) < n_nodes:
+        raise NodeSamplingError(
+            f"Unable to sample {n_nodes}. Too few neighbors for node {start_node}"
+        )
 
     return output
 
@@ -146,6 +157,11 @@ def bfs_node_diversity(
                 node_pvals[p_idx] *= decay_factor
                 node_pvals /= node_pvals.sum()
 
+    if len(visited) < n_nodes:
+        raise NodeSamplingError(
+            f"Unable to sample {n_nodes}. Too few neighbors for node {start_node}"
+        )
+
     return output
 
 
@@ -155,7 +171,6 @@ class SubgraphSampler:
     def __init__(
         self,
         graph: nx.Graph,
-        node_index_field: str,
         method: Literal["bfs", "bfs_node_diversity"] = "bfs",
     ) -> None:
         """Class for sampling a subgraph from a graph
@@ -164,8 +179,6 @@ class SubgraphSampler:
         ----------
         graph : nx.Graph
             Graph to sample from
-        node_index_field : str
-            Name of field to use as node index
         method : Literal["bfs", "bfs_node_diversity"], optional
             Search method to use for sampling subgraph, by default "bfs"
 
@@ -176,7 +189,6 @@ class SubgraphSampler:
         """
         self.g = graph
         self.method = method
-        self.node_index_field = node_index_field
         if method not in self.METHOD_MAP:
             raise ValueError(f"Invalid method: {method}")
 
@@ -203,7 +215,7 @@ class SubgraphSampler:
             nx.Graph: Subgraph containing the sampled nodes and their edges.
         """
         if not start_node:
-            start_node = random.choice(self.g.nodes)["node_index"]
+            start_node = random.choice(list(self.g.nodes))
 
         subgraph_edges = SubgraphSampler.METHOD_MAP[self.method](
             self.g, start_node, n_nodes, max_neighbors, **kwargs
@@ -299,8 +311,8 @@ class SubgraphDataset:
         graph: nx.Graph,
         subgraph_sampler: SubgraphSampler,
         perturber: GraphPerturber,
-        node_name_field: str,
-        edge_name_field: str,
+        node_name_field: str = "node_name",
+        edge_name_field: str = "edge_name",
         node_type_field: str = "node_type",
         n_node_range: tuple[int, int] = (3, 12),
         p_perturbation_range: tuple[float, float] = (0.1, 0.7),
@@ -638,12 +650,17 @@ class SubgraphDataset:
 
             start_node = self._sample_start_node()
 
-            subgraph = self.subgraph_sampler.sample(
-                n_nodes=n_nodes,
-                start_node=start_node,
-                max_neighbors=self.max_neighbors,
-                node_type_field=self.node_type_field,
-            )
+            try:
+                subgraph = self.subgraph_sampler.sample(
+                    n_nodes=n_nodes,
+                    start_node=start_node,
+                    max_neighbors=self.max_neighbors,
+                    node_type_field=self.node_type_field,
+                )
+            # Catches instance where node doesn't have enough neighbors to sample
+            except NodeSamplingError:
+                retries += 1
+                continue
 
             # Some subgraphs (e.g. Oregano) have the same entity under
             # different types, so this skips any graphs where a node appears
