@@ -65,19 +65,6 @@ class KGLoader:
             )
             .to_dict(orient="index")
         )
-        # node_attribute_map = (
-        #     triple_df.set_index(self.src_node_id_field)[src_node_attrs]
-        #     .rename(
-        #         # Rename to ensure all name and type fields the same
-        #         {
-        #             self.src_node_type_field: "node_type",
-        #             self.src_node_name_field: "node_name",
-        #         },
-        #         axis=1,
-        #     )
-        #     .drop_duplicates()
-        #     .to_dict(orient="index")
-        # )
 
         target_node_attrs = [self.target_node_id_field, self.target_node_type_field]
         if self.target_node_name_field:
