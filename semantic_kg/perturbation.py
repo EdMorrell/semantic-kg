@@ -21,8 +21,9 @@ class NoValidNodeError(Exception):
 
 
 class BasePerturbation(abc.ABC):
-    def __init__(self) -> None:
+    def __init__(self, directed: bool = True) -> None:
         """Base class for a perturbation operation to apply to a graph"""
+        self.directed = directed
         self.perturbation_log = []
 
         # Counts the edits made by a perturbation. Any edit is a single
@@ -68,25 +69,25 @@ class EdgeAttributeMapper(Protocol):
 class EdgeAdditionPerturbation(BasePerturbation):
     def __init__(
         self,
-        node_type_id: str,
-        valid_edge_types: Optional[list[str]] = None,
-        edge_attribute_mapper: Optional[EdgeAttributeMapper] = None,
+        valid_node_pairs: Optional[list[tuple[str, str]]] = None,
+        edge_map: Optional[dict[tuple[str, str], list[str]]] = None,
+        directed: bool = True,
         temperature: float = 0.2,
+        node_type_field: str = "node_type",
     ) -> None:
         """Applies a perturbation to the graph by adding an edge
 
-        Parameters:
+        Parameters
         ----------
-        node_type_id : str
-            Identifier to use for the type of the node
-        valid_edge_types : Optional[list[str]], optional
-            A list of valid edges types, defined as a string of the
-            source and target node types: "{src_node_type}_{target_node_type}",
-            e.g. "gene_disease". If None set then all edges valid, by
-            default None.
-        edge_attribute_mapper : Optional[EdgeAttributeMapper], optional
-            An optional object to use for generating edge attributes,
-            by default None.
+        valid_node_pairs : Optional[list[tuple[str, str]]], optional
+            A list of tuples denoting node-type pairs for which an edge is allowed,
+            If not provided then edges allowed between all node-type. By default None
+        edge_map : Optional[dict[tuple[str, str], list[str]]], optional
+            A map from node-type pairs to a list of valid edge-names. An edge-name will
+            be randomly sampled from the list. If not provided then the edge will
+            not be assigned a name, by default None
+        directed : bool, optional
+            Boolean indicating whether the graph is directed, by default True
         temperature : float, optional
             The create method uses a softmax function to sample the
             nodes to connect to based on the distance to that edge.
@@ -94,12 +95,14 @@ class EdgeAdditionPerturbation(BasePerturbation):
             sampling, by default 0.2, which biases sampling towards
             closer nodes. To allow edges between more distant nodes,
             increase the temperature.
+        node_type_field : str, optional
+            Node attribute key denoting the type of the node, by default "node_type"
         """
-        super().__init__()
-        self.node_type_id = node_type_id
-        self.valid_edge_types = valid_edge_types
-        self.edge_attribute_mapper = edge_attribute_mapper
+        super().__init__(directed=directed)
+        self.valid_node_pairs = valid_node_pairs
+        self.edge_map = edge_map
         self.temperature = temperature
+        self.node_type_field = node_type_field
 
     def create(self, graph: nx.Graph, max_resamples: int = 10) -> nx.Graph:
         all_distance = nx.floyd_warshall(graph)
@@ -130,16 +133,22 @@ class EdgeAdditionPerturbation(BasePerturbation):
                 np.where(np.random.multinomial(1, pvals))[0][0]
             ]
 
-            src_node_name = graph.nodes[src_node][self.node_type_id]
-            target_node_name = graph.nodes[target_node][self.node_type_id]
-            edge_name = f"{src_node_name}_{target_node_name}"
+            src_node_type = graph.nodes[src_node][self.node_type_field]
+            target_node_type = graph.nodes[target_node][self.node_type_field]
+
+            node_pair = (src_node_type, target_node_type)
+
+            if not self.directed:
+                node_pair = sorted(node_pair)
 
             # Ensures only a valid pair is found
-            if not self.valid_edge_types or edge_name in self.valid_edge_types:
-                if self.edge_attribute_mapper:
-                    edge_data = self.edge_attribute_mapper.get_attributes(
-                        graph.nodes[src_node], graph.nodes[target_node]
-                    )
+            if not self.valid_node_pairs or node_pair in self.valid_node_pairs:
+                if self.edge_map:
+                    if node_pair not in self.edge_map:
+                        raise NoValidEdgeError(f"{node_pair=} not found in `edge_map`")
+
+                    edge_opts = self.edge_map[node_pair]
+                    edge_data = {"edge_name": random.choice(edge_opts)}
                 else:
                     edge_data = {}
 
@@ -164,9 +173,9 @@ class EdgeAdditionPerturbation(BasePerturbation):
 
 
 class EdgeDeletionPerturbation(BasePerturbation):
-    def __init__(self) -> None:
+    def __init__(self, directed: bool = True) -> None:
         """Applies a perturbation to the graph by deleting an edge"""
-        super().__init__()
+        super().__init__(directed=directed)
 
     def create(self, graph: nx.Graph) -> nx.Graph:
         nodes = list(graph.nodes)
@@ -186,7 +195,7 @@ class EdgeDeletionPerturbation(BasePerturbation):
                     neighbor = neighbors[neighbor_idx]
                     if len(graph.edges(neighbor)) > 1:
                         # Checks if graph is a directed graph
-                        if isinstance(graph, nx.DiGraph):
+                        if self.directed:
                             perturbed_graph = nx.DiGraph(graph)
                         else:
                             perturbed_graph = nx.Graph(graph)
@@ -209,34 +218,30 @@ class EdgeDeletionPerturbation(BasePerturbation):
 class EdgeReplacementPerturbation(BasePerturbation):
     def __init__(
         self,
-        node_type_id: str,
-        edge_name_id: str,
-        replace_map: dict[str, list[str]],
-        edge_attribute_mapper: EdgeAttributeMapper,
+        replace_map: dict[tuple[str, str], list[str]],
+        directed: bool = True,
+        node_type_field: str = "node_type",
+        edge_name_field: str = "edge_name",
     ) -> None:
         """Applies a perturbation to the graph by replacing an edge
 
         Parameters
         ----------
-        node_type_id : str
-            Identifier to use for the type of the node
-        edge_name_id : str
-            Identifier to use as the edge name
-        replace_map : dict[str, list[str]]
-            A mapping from edge names to a list of possible replacement values.
-            Edge names are defined as the source and target node types:
-            "{src_node_type}_{target_node_type}", e.g. "gene_disease".
-
-            Example: {"gene_disease": ["treats", "causes"]}
-
-        edge_attribute_mapper : EdgeAttributeMapper
-            Object to use for generating edge attributes
+        replace_map : dict[tuple[str, str], list[str]]
+            A map from node-type pairs to a list of valid edge-names. An edge-name will
+            be randomly sampled from the list. If not provided then the edge will
+            not be assigned a name, by default None
+        directed : bool, optional
+            Boolean indicating whether the graph is directed, by default True
+        node_type_field : str, optional
+            Name of node type field in graph, by default "node_type"
+        edge_name_field : str, optional
+            Name of edge name field in graph, by default "edge_name"
         """
-        super().__init__()
-        self.node_type_id = node_type_id
-        self.edge_name_id = edge_name_id
+        super().__init__(directed=directed)
         self.replace_map = replace_map
-        self.edge_attribute_mapper = edge_attribute_mapper
+        self.node_type_field = node_type_field
+        self.edge_name_field = edge_name_field
 
         self.memory = set()
 
@@ -249,29 +254,32 @@ class EdgeReplacementPerturbation(BasePerturbation):
         for edge in graph.edges:
             src_node = graph.nodes[edge[0]]
             target_node = graph.nodes[edge[1]]
-            edge_name = (
-                f"{src_node[self.node_type_id]}_{target_node[self.node_type_id]}"
+
+            node_pair = (
+                src_node[self.node_type_field],
+                target_node[self.node_type_field],
             )
+            if not self.directed:
+                node_pair = tuple(sorted(node_pair))
 
-            if edge_name in self.replace_map and edge not in self.memory:
-                current_value = graph[edge[0]][edge[1]][self.edge_name_id]
+            if node_pair in self.replace_map and edge not in self.memory:
+                current_value = graph[edge[0]][edge[1]][self.edge_name_field]
 
-                if current_value not in self.replace_map[edge_name]:
+                if current_value not in self.replace_map[node_pair]:
                     raise NoValidEdgeError(
-                        f"`replace_map` does not contain an alternative value for {current_value}"
+                        "`replace_map` does not contain an alternative value"
+                        f" for {current_value}"
                     )
 
                 alternative_values = [
-                    v for v in self.replace_map[edge_name] if v != current_value
+                    v for v in self.replace_map[node_pair] if v != current_value
                 ]
                 new_value = random.choice(alternative_values)
 
-                edge_data = self.edge_attribute_mapper.get_attributes(
-                    src_node, target_node, edge_value=new_value
-                )
+                edge_data = {self.edge_name_field: new_value}
 
                 # Checks if graph is a directed graph
-                if isinstance(graph, nx.DiGraph):
+                if self.directed:
                     perturbed_graph = nx.DiGraph(graph)
                 else:
                     perturbed_graph = nx.Graph(graph)
@@ -295,9 +303,9 @@ class EdgeReplacementPerturbation(BasePerturbation):
 
 
 class NodeRemovalPerturbation(BasePerturbation):
-    def __init__(self) -> None:
+    def __init__(self, directed: bool = True) -> None:
         """Class for removing a node from the graph"""
-        super().__init__()
+        super().__init__(directed=directed)
 
     def _check_is_star_center(self, graph: nx.Graph, node: str) -> bool:
         """Checks if the node is the center of a star graph"""
@@ -378,7 +386,7 @@ class NodeRemovalPerturbation(BasePerturbation):
                 raise NoValidNodeError("Node is the center of a star graph")
 
         # Checks if graph is a directed graph
-        if isinstance(graph, nx.DiGraph):
+        if self.directed:
             perturbed_graph = nx.DiGraph(graph)
         else:
             perturbed_graph = nx.Graph(graph)
@@ -523,3 +531,58 @@ class GraphPerturber:
             raise NoValidEdgeError(
                 f"Could not find enough valid edges after {max_retries} retries"
             )
+
+
+def build_perturber(
+    edge_map: dict[tuple[str, str], list[str]],
+    valid_node_pairs: list[tuple[str, str]],
+    replace_map: dict[tuple[str, str], list[str]],
+    directed: bool,
+    edge_addition: bool = True,
+    edge_deletion: bool = True,
+    edge_replacement: bool = True,
+    node_removal: bool = True,
+    p_prob: Optional[list[float]] = None,
+    node_name_field: str = "node_name",
+    edge_name_field: str = "edge_name",
+) -> GraphPerturber:
+    n_perturbers = sum([edge_addition, edge_deletion, edge_replacement, node_removal])
+    if not p_prob:
+        p_prob = [1 / n_perturbers] * n_perturbers
+
+    if len(p_prob) != n_perturbers:
+        raise ValueError(
+            f"`p_prob` has size {len(p_prob)} which is not equal to the number of "
+            f"perturbers: {n_perturbers}"
+        )
+
+    perturbers = []
+    if edge_addition:
+        perturbers.append(
+            EdgeAdditionPerturbation(
+                valid_node_pairs=valid_node_pairs,
+                edge_map=edge_map,
+                directed=directed,
+            )
+        )
+
+    if edge_deletion:
+        perturbers.append(EdgeDeletionPerturbation(directed=directed))
+
+    if edge_replacement:
+        perturbers.append(
+            EdgeReplacementPerturbation(
+                replace_map=replace_map,
+                directed=directed,
+            )
+        )
+
+    if node_removal:
+        perturbers.append(NodeRemovalPerturbation(directed=directed))
+
+    return GraphPerturber(
+        perturbations=perturbers,
+        node_id_field=node_name_field,
+        edge_id_field=edge_name_field,
+        p_prob=p_prob,
+    )

@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 import numpy as np
 import networkx as nx
-from typing import Optional
 
 from semantic_kg import perturbation
 
@@ -37,9 +36,9 @@ class TestEdgeAdditionPerturbation:
         # Create a simple graph
         graph = nx.Graph()
 
-        graph.add_node("A", id="A")
-        graph.add_node("B", id="B")
-        graph.add_node("C", id="C")
+        graph.add_node("A", id="A", node_type="A")
+        graph.add_node("B", id="B", node_type="B")
+        graph.add_node("C", id="C", node_type="C")
 
         graph.add_edge("A", "B")
         graph.add_edge("B", "C")
@@ -47,7 +46,7 @@ class TestEdgeAdditionPerturbation:
         return graph
 
     def test_create(self, test_graph: nx.Graph) -> None:
-        perturber = perturbation.EdgeAdditionPerturbation(node_type_id="id")
+        perturber = perturbation.EdgeAdditionPerturbation(node_type_field="node_type")
         p_graph = perturber.create(test_graph)
 
         assert p_graph.number_of_edges() == test_graph.number_of_edges() + 1
@@ -63,52 +62,31 @@ class TestEdgeAdditionPerturbation:
     def test_create_valid_edges(self, test_graph: nx.Graph) -> None:
         """Only allow edges that already exist which should raise an error"""
         # Existing edges are only valid edges
-        valid_edge_names = ["A_B", "B_C"]
+        valid_node_pairs = [("A", "B"), ("B", "C")]
 
         perturber = perturbation.EdgeAdditionPerturbation(
-            node_type_id="id", valid_edge_types=valid_edge_names
+            valid_node_pairs=valid_node_pairs
         )
         with pytest.raises(perturbation.NoValidEdgeError):
             _ = perturber.create(test_graph)
 
-    def test_create_valid_edges_edge_attribute_mapper(
-        self, test_graph: nx.Graph
-    ) -> None:
-        """Only allow edges that already exist which should raise an error"""
+    def test_create_edge_map(self, test_graph: nx.Graph) -> None:
+        # Type annotation required to avoid Literal[str] error
+        edge_map: dict[tuple[str, str], list[str]] = {
+            ("A", "C"): ["mock_name"],
+            ("C", "A"): ["mock_name"],
+        }
 
-        # Mock mapper simply adds the source and target node id types as
-        # attributes
-        class MockAttributeMapper:
-            def get_attributes(
-                self,
-                src_node: dict,
-                target_node: dict,
-                edge_value: Optional[str] = None,
-            ) -> dict:
-                src_id = src_node["id"]
-                target_id = target_node["id"]
-
-                return {"src_node_id": src_id, "target_node_id": target_id}
-
-        perturber = perturbation.EdgeAdditionPerturbation(
-            node_type_id="id",
-            edge_attribute_mapper=MockAttributeMapper(),
-        )
-
+        perturber = perturbation.EdgeAdditionPerturbation(edge_map=edge_map)
         p_graph = perturber.create(test_graph)
 
-        # Check an edges exists between A and C
+        assert p_graph.number_of_edges() == test_graph.number_of_edges() + 1
         assert "C" in list(p_graph.neighbors("A"))
-
-        # Check the edge attributes
-        edge_data = p_graph.get_edge_data("A", "C")
-
-        assert (
-            edge_data["src_node_id"] == "A" and edge_data["target_node_id"] == "C"
-        ) or (edge_data["src_node_id"] == "C" and edge_data["target_node_id"] == "A")
+        assert perturber.edit_count == 1
+        assert p_graph["A"]["C"]["edge_name"] == "mock_name"
 
     def test_reset(self, test_graph: nx.Graph) -> None:
-        perturber = perturbation.EdgeAdditionPerturbation(node_type_id="id")
+        perturber = perturbation.EdgeAdditionPerturbation(node_type_field="id")
         _ = perturber.create(test_graph)
 
         perturber.reset()
@@ -116,7 +94,7 @@ class TestEdgeAdditionPerturbation:
         assert perturber.perturbation_log == []
 
     def test_create_directed(self, test_di_graph: nx.DiGraph) -> None:
-        perturber = perturbation.EdgeAdditionPerturbation(node_type_id="id")
+        perturber = perturbation.EdgeAdditionPerturbation(node_type_field="id")
         p_graph = perturber.create(test_di_graph)
         assert isinstance(p_graph, nx.DiGraph)
 
@@ -145,7 +123,7 @@ class TestEdgeDeletionPerturbation:
         return graph
 
     def test_create(self, test_graph: nx.Graph) -> None:
-        perturber = perturbation.EdgeDeletionPerturbation()
+        perturber = perturbation.EdgeDeletionPerturbation(directed=False)
         p_graph = perturber.create(test_graph)
 
         assert p_graph.number_of_edges() == test_graph.number_of_edges() - 1
@@ -153,7 +131,7 @@ class TestEdgeDeletionPerturbation:
         assert perturber.edit_count == 1
 
     def test_create_perturbation_log(self, test_graph: nx.Graph) -> None:
-        perturber = perturbation.EdgeDeletionPerturbation()
+        perturber = perturbation.EdgeDeletionPerturbation(directed=False)
         _ = perturber.create(test_graph)
 
         assert len(perturber.perturbation_log) == 1
@@ -162,7 +140,7 @@ class TestEdgeDeletionPerturbation:
         assert perturber.perturbation_log[0]["target"] in ["A", "B"]
 
     def test_invalid_create(self, test_graph: nx.Graph) -> None:
-        perturber = perturbation.EdgeDeletionPerturbation()
+        perturber = perturbation.EdgeDeletionPerturbation(directed=False)
         p_graph = perturber.create(test_graph)
 
         # Once A-B edge deleted, no edges are valid for deletion
@@ -181,42 +159,21 @@ class TestEdgeReplacementPerturbation:
         # Create a simple graph
         graph = nx.Graph()
 
-        graph.add_node("A", id="A", node_type="allowed")
-        graph.add_node("B", id="B", node_type="allowed")
-        graph.add_node("C", id="C", node_type="allowed")
+        graph.add_node("A", id="A", node_type="mock")
+        graph.add_node("B", id="B", node_type="mock")
+        graph.add_node("C", id="C", node_type="mock")
 
-        graph.add_edge("A", "B", effect="increase")
-        graph.add_edge("B", "C", effect="decrease")
+        graph.add_edge("A", "B", edge_name="increase")
+        graph.add_edge("B", "C", edge_name="decrease")
 
         return graph
-
-    @pytest.fixture(scope="class")
-    def test_attribute_mapper(
-        self, test_graph: nx.Graph
-    ) -> perturbation.EdgeAttributeMapper:
-        class MockAttributeMapper:
-            def get_attributes(
-                self,
-                src_node: dict,
-                target_node: dict,
-                edge_value: Optional[str] = None,
-            ) -> dict:
-                return {"effect": edge_value}
-
-        return MockAttributeMapper()
 
     def test_create(
         self,
         test_graph: nx.Graph,
-        test_attribute_mapper: perturbation.EdgeAttributeMapper,
     ) -> None:
         perturber = perturbation.EdgeReplacementPerturbation(
-            node_type_id="node_type",
-            edge_name_id="effect",
-            replace_map={
-                "allowed_allowed": ["increase", "decrease"],
-            },
-            edge_attribute_mapper=test_attribute_mapper,
+            replace_map={("mock", "mock"): ["increase", "decrease"]}, directed=False
         )
 
         p_graph = perturber.create(test_graph)
@@ -225,15 +182,15 @@ class TestEdgeReplacementPerturbation:
         # Find the replaced edge
         replaced_edge = None
         for u, v, data in test_graph.edges(data=True):
-            if data["effect"] != p_graph.get_edge_data(u, v)["effect"]:
+            if data["edge_name"] != p_graph.get_edge_data(u, v)["edge_name"]:
                 replaced_edge = (u, v)
 
         # Checks a replaced edge is found
         assert replaced_edge is not None
         # Checks the edge `effect` attribute has been changed
         assert (
-            p_graph.get_edge_data(*replaced_edge)["effect"]
-            != test_graph.get_edge_data(*replaced_edge)["effect"]
+            p_graph.get_edge_data(*replaced_edge)["edge_name"]
+            != test_graph.get_edge_data(*replaced_edge)["edge_name"]
         )
 
         assert perturber.edit_count == 1
@@ -243,13 +200,12 @@ class TestEdgeReplacementPerturbation:
         assert perturber.perturbation_log[-1]["source"] in list(replaced_edge)
         assert perturber.perturbation_log[-1]["target"] in list(replaced_edge)
         assert perturber.perturbation_log[-1]["metadata"] == {
-            "effect": p_graph.get_edge_data(*replaced_edge)["effect"]
+            "edge_name": p_graph.get_edge_data(*replaced_edge)["edge_name"]
         }
 
     def test_create_invalid(
         self,
         test_graph: nx.Graph,
-        test_attribute_mapper: perturbation.EdgeAttributeMapper,
     ) -> None:
         modified_graph = test_graph.copy()
 
@@ -257,12 +213,7 @@ class TestEdgeReplacementPerturbation:
         nx.set_node_attributes(modified_graph, "disallowed", "node_type")
 
         perturber = perturbation.EdgeReplacementPerturbation(
-            node_type_id="node_type",
-            edge_name_id="effect",
-            replace_map={
-                "allowed_allowed": ["increase", "decrease"],
-            },
-            edge_attribute_mapper=test_attribute_mapper,
+            replace_map={("mock", "mock"): ["increase", "decrease"]}, directed=False
         )
 
         with pytest.raises(perturbation.NoValidEdgeError):
@@ -270,18 +221,12 @@ class TestEdgeReplacementPerturbation:
 
     def test_create_directed(
         self,
-        test_di_graph: nx.DiGraph,
-        test_attribute_mapper: perturbation.EdgeAttributeMapper,
+        test_graph: nx.Graph,
     ) -> None:
         perturber = perturbation.EdgeReplacementPerturbation(
-            node_type_id="node_type",
-            edge_name_id="effect",
-            replace_map={
-                "allowed_allowed": ["increase", "decrease"],
-            },
-            edge_attribute_mapper=test_attribute_mapper,
+            replace_map={("mock", "mock"): ["increase", "decrease"]}, directed=True
         )
-        p_graph = perturber.create(test_di_graph)
+        p_graph = perturber.create(test_graph)
         assert isinstance(p_graph, nx.DiGraph)
 
 
