@@ -8,9 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 from hishel import CacheClient
 
-from semantic_kg.perturbation import (
-    build_perturber,
-)
+from semantic_kg.datasets import BaseDatasetLoader
 from semantic_kg.utils import get_hishel_http_client
 
 
@@ -175,7 +173,7 @@ def _remove_id_strings(entity_map: dict[str, str]) -> dict[str, str]:
     return {k: v for k, v in entity_map.items() if len(v) != 27}
 
 
-class OreganoLoader:
+class OreganoLoader(BaseDatasetLoader):
     NODE_ATTR_MAP = {
         "activity": {
             "fname": "ACTIVITY.tsv",
@@ -206,9 +204,7 @@ class OreganoLoader:
         incl_ncbi_genes: bool = True,
         cache_dir: Optional[str] = None,
     ) -> None:
-        self.data_dir = Path(data_dir)
-        if not self.data_dir.is_dir():
-            raise NotADirectoryError(f"{data_dir} is not a directory")
+        super().__init__(data_dir=data_dir)
 
         # Configures path to required files for dataset
         triple_fpath = self.data_dir / "OREGANO_V2.1.tsv"
@@ -451,8 +447,7 @@ class OreganoLoader:
 
 if __name__ == "__main__":
     import numpy as np
-    from semantic_kg.sampling import SubgraphDataset, SubgraphSampler
-    from semantic_kg.datasets import KGLoader, create_edge_map, get_valid_node_pairs
+    from semantic_kg.generation import SubgraphPipeline
 
     random.seed(42)
     np.random.seed(42)
@@ -460,7 +455,7 @@ if __name__ == "__main__":
     oregano_loader = OreganoLoader("datasets/oregano")
     df = oregano_loader.load()
 
-    kg_loader = KGLoader(
+    pipeline = SubgraphPipeline(
         src_node_id_field="subject_id",
         src_node_type_field="subject_type",
         src_node_name_field="subject_name",
@@ -468,36 +463,6 @@ if __name__ == "__main__":
         target_node_id_field="object_id",
         target_node_type_field="object_type",
         target_node_name_field="object_name",
-    )
-    g = kg_loader.load(triple_df=df, directed=True)
-
-    edge_map = kg_loader.create_edge_map(df, directed=True)
-    edge_map = create_edge_map(
-        df,
-        src_node_type_field="subject_type",
-        target_node_type_field="object_type",
-        edge_name_field="predicate",
-    )
-    replace_map = {k: v for k, v in edge_map.items() if len(v) > 1}
-    valid_node_pairs = get_valid_node_pairs(
-        df, src_node_type_field="subject_type", target_node_type_field="object_type"
-    )
-
-    perturber = build_perturber(
-        edge_map=edge_map,
-        valid_node_pairs=valid_node_pairs,  # type: ignore
-        replace_map=OREGANO_REPLACE_MAP,
         directed=True,
-        p_prob=[0.3, 0.3, 0.3, 0.1],
     )
-
-    sampler = SubgraphSampler(graph=g, method="bfs_node_diversity")
-
-    subgraph = SubgraphDataset(
-        graph=g,
-        subgraph_sampler=sampler,
-        perturber=perturber,
-        n_node_range=(3, 10),
-        save_subgraphs=False,
-    )
-    sample_df = subgraph.generate(1000, 10000)
+    subgraph_df = pipeline.generate(df, 1000)
