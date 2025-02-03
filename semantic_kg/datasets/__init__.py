@@ -1,6 +1,23 @@
+import abc
 from typing import Optional
+from pathlib import Path
+
 import pandas as pd
 import networkx as nx
+
+
+EDGE_MAPPING_TYPE = dict[tuple[str, str], list[str]]
+
+
+class BaseDatasetLoader:
+    def __init__(self, data_dir: Path | str) -> None:
+        self.data_dir = Path(data_dir)
+        if not self.data_dir.is_dir():
+            raise NotADirectoryError(f"{data_dir} is not a directory")
+
+    @abc.abstractmethod
+    def load(self) -> pd.DataFrame:
+        pass
 
 
 class KGLoader:
@@ -88,25 +105,6 @@ class KGLoader:
         node_attribute_map.update(target_node_attribute_map)
 
         return node_attribute_map  # type: ignore
-
-    def create_edge_map(
-        self, triple_df: pd.DataFrame, directed: bool = True
-    ) -> dict[tuple[str, str], list[str]]:
-        triple_df["node_types"] = list(
-            triple_df[
-                [self.src_node_type_field, self.target_node_type_field]
-            ].itertuples(index=False, name=None)
-        )
-        if not directed:
-            triple_df["node_types"] = triple_df["node_types"].apply(
-                lambda x: tuple(sorted(x))
-            )
-        return (
-            triple_df[["node_types", self.edge_name_field]]
-            .groupby("node_types")
-            .agg(lambda x: list(x.unique()))[self.edge_name_field]
-            .to_dict()
-        )
 
     def load(self, triple_df: pd.DataFrame, directed: bool = True) -> nx.Graph:
         self._validate_fields(triple_df)
