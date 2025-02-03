@@ -1,0 +1,10 @@
+dataset_name: prime_kg
+data_dir: datasets/prime_kg
+src_node_id_field: src_node_index
+src_node_type_field: src_node_type
+src_node_name_field: src_node_name
+edge_name_field: display_relation
+target_node_id_field: target_node_index
+target_node_type_field: target_node_type
+target_node_name_field: target_node_name
+directed_graph: false

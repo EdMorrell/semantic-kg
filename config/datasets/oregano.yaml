@@ -1,0 +1,21 @@
+dataset_name: oregano
+data_dir: datasets/oregano
+src_node_id_field: subject_id
+src_node_type_field: subject_type
+src_node_name_field: subject_name
+edge_name_field: predicate
+target_node_id_field: object_id
+target_node_type_field: object_type
+target_node_name_field: object_name
+directed_graph: true
+
+replace_map:
+  !!python/tuple ["COMPOUND", "ACTIVITY"]:
+    - increase_activity
+    - decrease_activity
+  !!python/tuple ["COMPOUND", "COMPOUND"]:
+    - increase_activity
+    - decrease_activity
+  !!python/tuple ["COMPOUND", "EFFECT"]:
+    - increase_effect
+    - decrease_effect
