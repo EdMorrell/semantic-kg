@@ -1,0 +1,23 @@
+dataset_name: oregano
+dataset_path: datasets/oregano/1721e6969a2871c36f76c4b0f469edae.csv
+response_model_config:
+  model_name: openai
+  params:
+    model_id: gpt-4-32k
+    temperature: 1.0
+    cache_dir: outputs/responses/
+scorer_model_config:
+  entity_extractor_model:
+    model_name: openai
+    params:
+      model_id: gpt-4o
+      temperature: 1.0
+      structured_output: true
+      cache_dir: outputs/responses/
+  kg_extractor_model:
+    model_name: openai
+    params:
+      model_id: gpt-4o
+      temperature: 1.0
+      structured_output: true
+      cache_dir: outputs/responses/
