@@ -373,7 +373,7 @@ class NLGenerationPipeline:
             self.request_func = self.model.generate
 
     def _get_pbar(self, subgraph_dataset: pd.DataFrame) -> tqdm:
-        total = len(subgraph_dataset) * self.n_responses
+        total = len(subgraph_dataset) * self.n_responses * 2
         pbar = tqdm(total=total)
         return pbar
 
@@ -442,6 +442,9 @@ class NLGenerationPipeline:
         if total_responses == 0:
             print("No acceptable responses found")
             acceptable_responses = []
+
+        # Updates the progress bar with missing responses
+        pbar.update(self.n_responses - total_responses)
 
         return acceptable_responses
 
