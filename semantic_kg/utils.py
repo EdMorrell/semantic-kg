@@ -1,9 +1,11 @@
+import ast
+import string
 from typing import Optional
 from pathlib import Path
-import string
 
 import hishel
 import numpy as np
+import pandas as pd
 import networkx as nx
 
 
@@ -47,3 +49,17 @@ def get_hishel_http_client(cache_dir: Optional[str | Path] = None):
     http_client = hishel.CacheClient(controller=controller, storage=storage)
 
     return http_client
+
+
+def load_subgraph_dataset(fpath: Path | str) -> pd.DataFrame:
+    subgraph_dataset = pd.read_csv(str(fpath))
+
+    transform_cols = [
+        "subgraph_triples",
+        "perturbed_subgraph_triples",
+        "perturbation_log",
+    ]
+    for col in transform_cols:
+        subgraph_dataset[col] = subgraph_dataset[col].apply(ast.literal_eval)
+
+    return subgraph_dataset
