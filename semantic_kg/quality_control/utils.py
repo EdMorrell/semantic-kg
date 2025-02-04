@@ -1,6 +1,8 @@
 import pandas as pd
 from tqdm import tqdm
 
+from semantic_kg.generation import ScorerConfig
+from semantic_kg.models.reconstruction import KGReconstuctionModel
 from semantic_kg.quality_control import scorer
 from semantic_kg.models.base import BaseTextGeneration
 from semantic_kg.models.llm import InvalidResponseError
@@ -36,6 +38,30 @@ def build_reconstruction_scorer(
     )
 
     return reconstruction_scorer
+
+
+def build_default_qc_scorers(
+    entity_extractor_model: BaseTextGeneration,
+    kg_extractor_model: BaseTextGeneration,
+) -> list[ScorerConfig]:
+    """Helper function to instantiate default quality-control scorers"""
+    scorer_model = KGReconstuctionModel(
+        entity_generation_model=entity_extractor_model,
+        kg_generation_model=kg_extractor_model,
+    )
+
+    reconstruction_scorer = build_reconstruction_scorer(
+        scorer_model, match_direction=True
+    )
+
+    regex_scorer = scorer.RegexMatcherScorer(
+        pattern=scorer.QUOTE_REGEX, mode="not_exists"
+    )
+
+    return [
+        ScorerConfig(scorer=reconstruction_scorer, accept_threshold=1.0),
+        ScorerConfig(scorer=regex_scorer, accept_threshold=1.0),
+    ]
 
 
 class BatchReconstructionScorer:
