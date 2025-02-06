@@ -1,5 +1,5 @@
 dataset_name: oregano
-dataset_path: datasets/oregano/1721e6969a2871c36f76c4b0f469edae.csv
+dataset_path: datasets/oregano/83c993a0263a1dd956674d15de661864.csv
 response_model_config:
   model_name: openai
   params:

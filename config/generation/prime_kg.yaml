@@ -1,5 +1,5 @@
 dataset_name: prime_kg
-dataset_path: datasets/prime_kg/54a9a851c50cec855b858f9a66d24e15.csv
+dataset_path: datasets/prime_kg/c168f03f1cfda6ffa0dd452e271d958d.csv
 response_model_config:
   model_name: openai
   params:
