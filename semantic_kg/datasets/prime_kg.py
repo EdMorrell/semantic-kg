@@ -17,7 +17,7 @@ class PrimeKGLoader(BaseDatasetLoader):
             raise ValueError(f"{self.edge_fpath} does not exist")
 
     def load(self) -> pd.DataFrame:
-        node_df = pd.read_csv(self.node_fpath)
+        node_df = pd.read_csv(self.node_fpath, sep="\t")
         edge_df = pd.read_csv(self.edge_fpath)
 
         triple_df = edge_df.join(node_df, on="x_index", rsuffix="x").join(
