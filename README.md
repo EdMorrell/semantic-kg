@@ -1,51 +1,93 @@
 # Semantic-Knowledge Graph
 
+This repo contains code for generating a semantic-similarity benchmark dataset using knowledge-graphs.
+
 ## Installation
 
-1. This package manages dependencies through [uv](https://docs.astral.sh/uv/). Follow the guide to install uv.
+### Prerequisites
 
-To install the package and create a virtual env, run:
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.  
 
-```bash
-uv sync
-```
+1. **Install uv:** If you don't have uv installed, follow the instructions at the provided link.
 
-then to use your virtual env, run:
+2. **Clone the repository:**
 
 ```bash
-source .venv/bin/activate  
+git clone https://github.com/EdMorrell/semantic-kg
+cd semantic-knowledge-graph
 ```
 
-2. This package also has a pre-commit to ensure consistent formatting. To run on every commit, run:
+3. **Initialize the project:**
 
 ```bash
-pre-commit install
+make init
 ```
 
-## Pre-requisites
+This command will:
 
-### Prime-KG
-
-To generate graphs using PrimeKG you will need to download the relevant data files from [Harvard Dataverse](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/IXA7BM).
-
-Download `edges.csv` and `nodes.tab` and save them somewhere. The recommended location is in the repo at: `datasets/prime_kg/`
+* Download the necessary datasets (PrimeKG and Oregano).
+* Create and activate a uv virtual environment.
+* Install the required Python packages within the virtual environment.
 
 
-### OpenAI
+## Running the Code
 
-You will also need to provide API keys to work with OpenAI. Make a copy of [.env.example](.env.example):
+This project provides two main scripts located in the `bin/` directory:
+
+**1. Create a Subgraph Dataset:**
+
+```bash
+python bin/create_subgraph_dataset.py --dataset_name=<dataset_name>
+```
+
+Replace `<dataset_name>` with either `prime_kg` or `oregano`.  This script generates a dataset of subgraphs from the specified knowledge graph.
+
+**2. Create a Semantic Benchmark Dataset:**
+
+```bash
+python bin/create_semantic_kg.py --dataset_name=<dataset_name>
+```
+
+Replace `<dataset_name>` with the name used in the previous step (e.g., `prime_kg`). This script converts the subgraph dataset into a natural-language benchmark dataset.
+
+**Note:** You must configure a language model before running this script (see below).
+
+
+## Language Model Configuration
+
+This project currently supports OpenAI language models through the Azure OpenAI API.  To configure this:
+
+1. **Copy the example environment file:**
 
 ```bash
 cp .env.example .env
 ```
 
-And then add the relevant API keys to the `.env` file.
+2. **Edit the `.env` file:**  Open the newly created `.env` file and add your Azure OpenAI API key and other required credentials.  Refer to the Azure OpenAI documentation for the specific environment variables needed.
 
 
-## Running Code
 
-### Prime-KG
-The 2 main entry-points are located under `/bin`:
+## Configuring Pipelines
+All default pipeline configuration files are located under [config/](config/)
 
-1. [create_primekg_subgraph_dataset.py](bin/create_primekg_subgraph_dataset.py): Will generate a dataset of knowledge-graphs and perturbed knowledge graphs
-1. [create_primekg.py](bin/create_primekg.py): Will take the dataset generated in `1.` and use it to generate responses with a language-model
+[datasets/](config/datasets/) contains dataset configuration files for generating a subgraph dataset from a knowledge-graph
+
+[generation/](config/generation/) contains configuration files for generating natural-language benchmark statements from subgraph datasets.  You can customize these files to modify the data generation process.
+
+## Datasets
+
+### Oregano
+[Oregano](https://gitub.u-bordeaux.fr/erias/oregano) is a drug repositioning knowledge-graph dataset containing information on entities such as drugs, drug-targets, indications and side-effects.
+
+
+### PrimeKG
+[PrimeKG](https://zitniklab.hms.harvard.edu/projects/PrimeKG/) is a precision medicine knowledge-graph dataset containing relationships between entities such as drugs, diseases and molecular and genetic factors.
+
+
+## Tests
+All unit-tests are located in the [tests/](tests/) directory. To run the full unit-testing suite run:
+
+```bash
+pytest tests/
+```
+
