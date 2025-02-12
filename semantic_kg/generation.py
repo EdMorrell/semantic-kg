@@ -1,4 +1,5 @@
 import functools
+from pathlib import Path
 import random
 from typing import Callable, Literal, Optional, Type, TypedDict
 
@@ -9,6 +10,14 @@ from tqdm import tqdm
 from openai import BadRequestError
 
 from semantic_kg import utils
+from semantic_kg.sampling import SubgraphSampler, SubgraphDataset
+from semantic_kg.perturbation import GraphPerturber, build_perturber
+from semantic_kg.datasets import (
+    KGLoader,
+    create_edge_map,
+    get_valid_node_pairs,
+    EDGE_MAPPING_TYPE,
+)
 from semantic_kg.quality_control.scorer import ScorerProtocol
 from semantic_kg.models.base import BaseTextGeneration
 from semantic_kg.models.llm import InvalidResponseError
@@ -21,6 +30,217 @@ DEFAULT_EXCEPTION_MAP = {
         openai.APIConnectionError,
     ]
 }
+
+
+class SubgraphPipeline:
+    def __init__(
+        self,
+        src_node_id_field: str,
+        src_node_type_field: str,
+        src_node_name_field: str,
+        edge_name_field: str,
+        target_node_id_field: str,
+        target_node_type_field: str,
+        target_node_name_field: str,
+        directed: bool,
+        save_path: Optional[Path | str] = None,
+        edge_map: Optional[EDGE_MAPPING_TYPE] = None,
+        replace_map: Optional[EDGE_MAPPING_TYPE] = None,
+        valid_node_pairs: Optional[list[tuple[str, str]]] = None,
+        edge_addition: bool = True,
+        edge_deletion: bool = True,
+        edge_replacement: bool = True,
+        node_removal: bool = True,
+        p_prob: Optional[list[float]] = None,
+        kg_loader: Optional[KGLoader] = None,
+        perturber: Optional[GraphPerturber] = None,
+    ) -> None:
+        """Pipeline for generating pairs of subgraph and perturbed subgraphs
+        by sampling from a Knowledge-Graph
+
+        Parameters
+        ----------
+        src_node_id_field : str
+            Name of ID field for source-nodes in knowledge-graph
+        src_node_type_field : str
+            Name of type field for source-nodes in knowledge-graph
+        src_node_name_field : str
+            Field indicating display name of source-nodes in knowledge-graph
+        edge_name_field : str
+            Field indicating display name of edges in knowledge-graph
+        target_node_id_field : str
+            Name of ID field for target-nodes in knowledge-graph
+        target_node_type_field : str
+            Name of type field for target-nodes in knowledge-graph
+        target_node_name_field : str
+            Field indicating display name of target-nodes in knowledge-graph
+        directed : bool
+            Whether or not the knowledge-graph is stored in directed setting
+        save_path : Path | str, optional
+            Path to directory to save final dataset
+        edge_map : Optional[EDGE_MAPPING_TYPE], optional
+            Map from node-pair types to edge-names (
+            e.g. ("PROTEIN", "PROTEIN"): ["protein-protein-interaction"]), If not
+            provided will be inferred automatically from the `triple_df`. By default
+            None
+        replace_map : Optional[EDGE_MAPPING_TYPE], optional
+            Map denoting accepted replacement values for edges during a replacement
+            perturbation. Replacement mappings are denoted by a mapping from node-type
+            to valid edge-values. For example: {
+                ("DRUG", "PROTEIN"): ["activates", "inhibits"]
+            }
+            If not provided will be inferred automatically from `triple_df`. By default
+            None
+        valid_node_pairs : Optional[list[tuple[str, str]]], optional
+            A list denoting valid node-type pairs, (e.g. [("PROTEIN", "PROTEIN"),
+            ("PROTEIN", "GENE"), ...). If not provided will be inferred automatically
+            from `triple_df`. By default None
+        edge_addition : bool, optional
+            Whether to perform edge-addition perturbations. By default True
+        edge_deletion : bool, optional
+            Whether to perform an edge-deletion perturbations. By default True
+        edge_replacement : bool, optional
+            Whether to perform edge-replacement perturbations. By default True
+        node_removal : bool, optional
+            Whether to perform node-removal perturbations. By default True
+        p_prob : list[float], optional
+            List of floats denoting the probability of applying a given perturbation.
+            Default order: [p_edge_addition, p_edge_deletion, p_edge_replacement,
+            p_node_removal]
+            If not provided denotes to default of [0.3, 0.3, 0.3, 0.1] (such that node
+            removal perturbations are slightly less probable.)
+        kg_loader : Optional[KGLoader], optional
+            Optionally provide an instance of KGLoader to load a knowledge-graph from
+            `triple_df`, by default None
+        perturber : Optional[GraphPerturber], optional
+            Optionally provide an instance of GraphPerturber, to perturb individual
+            subgraphs, by default None
+        """
+        self.src_node_id_field = src_node_id_field
+        self.src_node_type_field = src_node_type_field
+        self.src_node_name_field = src_node_name_field
+        self.edge_name_field = edge_name_field
+        self.target_node_id_field = target_node_id_field
+        self.target_node_type_field = target_node_type_field
+        self.target_node_name_field = target_node_name_field
+
+        self.directed = directed
+
+        self.save_path = save_path
+        if self.save_path:
+            self.save_path = Path(self.save_path)
+
+        self.edge_map = edge_map
+        self.replace_map = replace_map
+        self.valid_node_pairs = valid_node_pairs
+
+        self.edge_addition = edge_addition
+        self.edge_deletion = edge_deletion
+        self.edge_replacement = edge_replacement
+        self.node_removal = node_removal
+        self.p_prob = p_prob
+
+        if not kg_loader:
+            self.kg_loader = KGLoader(
+                src_node_id_field=self.src_node_id_field,
+                src_node_type_field=self.src_node_type_field,
+                src_node_name_field=self.src_node_name_field,
+                edge_name_field=self.edge_name_field,
+                target_node_id_field=self.target_node_id_field,
+                target_node_type_field=self.target_node_type_field,
+                target_node_name_field=self.target_node_name_field,
+            )
+        else:
+            self.kg_loader = kg_loader
+
+        self.perturber = perturber
+        if not self.perturber:
+            if (
+                not self.edge_addition
+                and not self.edge_deletion
+                and not self.edge_replacement
+                and not self.node_removal
+            ):
+                raise ValueError("Perturbation options can't all be False")
+
+    def generate(
+        self,
+        triple_df: pd.DataFrame,
+        n_iter: int = 1000,
+        n_node_range: tuple[int, int] = (3, 10),
+        sample_method: Literal["bfs", "bfs_node_diversity"] = "bfs_node_diversity",
+        save_subgraphs: bool = False,
+    ) -> pd.DataFrame:
+        """Generates a dataset of subgraph/perturbed subgraph pairs
+
+        Method takes a triple dataframe and uses it to sample a subgraph dataset
+
+        Parameters
+        ----------
+        triple_df : pd.DataFrame
+            Dataframe consisting of knowledge-graph triples (subject, predicate, object)
+        n_iter : int, optional
+            Number of iterations (no. of final rows in dataset), by default 1000
+        n_node_range : tuple[int, int], optional
+            A range indicating the number of nodes in each sampled subgraph, by default
+            (3, 10)
+        sample_method : Literal["bfs", "bfs_node_diversity"], optional
+           Method to sample subgraph, by default "bfs_node_diversity"
+        save_subgraphs : bool, optional
+            If True then will save intermediate subgraphs. This will significantly
+            slow execution, by default False
+
+        Returns
+        -------
+        pd.DataFrame
+            Final subgraph dataframe
+        """
+        g = self.kg_loader.load(triple_df=triple_df, directed=self.directed)
+
+        if not self.edge_map:
+            self.edge_map = create_edge_map(
+                triple_df,
+                src_node_type_field=self.kg_loader.src_node_type_field,
+                target_node_type_field=self.kg_loader.target_node_type_field,
+                edge_name_field=self.kg_loader.edge_name_field,
+                directed=self.directed,
+            )
+        if not self.replace_map:
+            self.replace_map = {k: v for k, v in self.edge_map.items() if len(v) > 1}
+
+        if not self.valid_node_pairs:
+            self.valid_node_pairs = get_valid_node_pairs(
+                triple_df,
+                src_node_type_field=self.kg_loader.src_node_type_field,
+                target_node_type_field=self.kg_loader.target_node_type_field,
+            )
+
+        if not self.perturber:
+            self.perturber = build_perturber(
+                edge_map=self.edge_map,
+                valid_node_pairs=self.valid_node_pairs,  # type: ignore
+                replace_map=self.replace_map,
+                directed=self.directed,
+                edge_addition=self.edge_addition,
+                edge_deletion=self.edge_deletion,
+                edge_replacement=self.edge_replacement,
+                node_removal=self.node_removal,
+                p_prob=self.p_prob,
+            )
+
+        sampler = SubgraphSampler(graph=g, method=sample_method)
+
+        subgraph = SubgraphDataset(
+            graph=g,
+            subgraph_sampler=sampler,
+            perturber=self.perturber,
+            n_node_range=n_node_range,
+            save_subgraphs=save_subgraphs,
+            dataset_save_dir=self.save_path,  # type: ignore
+        )
+        sample_df = subgraph.generate(n_iter, n_iter * 10)
+
+        return sample_df
 
 
 def create_backoff_decorator(
@@ -153,7 +373,7 @@ class NLGenerationPipeline:
             self.request_func = self.model.generate
 
     def _get_pbar(self, subgraph_dataset: pd.DataFrame) -> tqdm:
-        total = len(subgraph_dataset) * self.n_responses
+        total = len(subgraph_dataset) * self.n_responses * 2
         pbar = tqdm(total=total)
         return pbar
 
@@ -222,6 +442,9 @@ class NLGenerationPipeline:
         if total_responses == 0:
             print("No acceptable responses found")
             acceptable_responses = []
+
+        # Updates the progress bar with missing responses
+        pbar.update(self.n_responses - total_responses)
 
         return acceptable_responses
 
