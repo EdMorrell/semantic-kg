@@ -14,7 +14,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ```bash
 git clone https://github.com/EdMorrell/semantic-kg
-cd semantic-knowledge-graph
+cd semantic-kg
 ```
 
 3. **Initialize the project:**
