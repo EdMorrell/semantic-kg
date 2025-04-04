@@ -12,6 +12,7 @@ from semantic_kg.datasets import EDGE_MAPPING_TYPE
 from semantic_kg.generation import SubgraphPipeline
 from semantic_kg.datasets.oregano import OreganoLoader
 from semantic_kg.datasets.prime_kg import PrimeKGLoader
+from semantic_kg.datasets.findkg import FindKGDatasetLoader
 
 
 ROOT_DIR = Path(__file__).parent.parent
@@ -20,12 +21,14 @@ ROOT_DIR = Path(__file__).parent.parent
 CONFIG_PATHS = {
     "oregano": ROOT_DIR / "config" / "datasets" / "oregano.yaml",
     "prime_kg": ROOT_DIR / "config" / "datasets" / "prime_kg.yaml",
+    "findkg": ROOT_DIR / "config" / "datasets" / "findkg.yaml",
 }
 
 
 DATASET_LOADERS = {
     "oregano": OreganoLoader,
     "prime_kg": PrimeKGLoader,
+    "findkg": FindKGDatasetLoader,
 }
 
 
