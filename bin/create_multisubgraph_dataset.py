@@ -16,6 +16,7 @@ from semantic_kg.perturbation import (
     EdgeDeletionPerturbation,
     EdgeReplacementPerturbation,
     NodeRemovalPerturbation,
+    NodeReplacementPerturbation,
 )
 
 
@@ -62,6 +63,33 @@ def parse_args() -> argparse.Namespace:
     )
 
     return parser.parse_args()
+
+
+def _generate_node_type_replace_map(
+    triple_df: pd.DataFrame,
+    src_node_name_field: str,
+    src_node_type_field: str,
+    target_node_name_field: str,
+    target_node_type_field: str,
+) -> dict[str, list[str]]:
+    src_node_type_dict = (
+        triple_df.groupby(src_node_type_field)[src_node_name_field]
+        .apply(set)
+        .apply(list)
+        .to_dict()
+    )
+    target_node_type_dict = (
+        triple_df.groupby(target_node_type_field)[target_node_name_field]
+        .apply(set)
+        .apply(list)
+        .to_dict()
+    )
+    return {
+        key: src_node_type_dict.get(key, []) + target_node_type_dict.get(key, [])
+        for key in set(
+            list(src_node_type_dict.keys()) + list(target_node_type_dict.keys())
+        )
+    }
 
 
 def _generate_dataset(
@@ -175,10 +203,27 @@ def main(
         edge_id_field="edge_name",
     )
 
+    node_type_replace_map = _generate_node_type_replace_map(
+        df,
+        src_node_name_field=config.src_node_name_field,
+        src_node_type_field=config.src_node_type_field,
+        target_node_name_field=config.target_node_name_field,
+        target_node_type_field=config.target_node_type_field,
+    )
+    node_replacement_perturbation = NodeReplacementPerturbation(
+        node_attr_field="node_name", replace_map={"node_type": node_type_replace_map}
+    )
+    node_replacement_perturber = GraphPerturber(
+        perturbations=[node_replacement_perturbation],
+        node_id_field="node_name",
+        edge_id_field="edge_name",
+    )
+
     perturbers = {
         "edge_deletion": edge_deletion_perturber,
         "edge_replacement": edge_replacement_perturber,
         "node_removal": node_removal_perturber,
+        "node_replacement": node_replacement_perturber,
     }
 
     dfs = []
