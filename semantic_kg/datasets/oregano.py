@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 from hishel import CacheClient
 
-from semantic_kg.datasets import BaseDatasetLoader
+from semantic_kg.datasets.base import BaseDatasetLoader
 from semantic_kg.utils import get_hishel_http_client
 
 
