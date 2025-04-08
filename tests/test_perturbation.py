@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 import pytest
 import numpy as np
 import networkx as nx
@@ -311,6 +313,134 @@ class TestNodeRemovalPerturbation:
         perturber = perturbation.NodeRemovalPerturbation()
         p_graph = perturber.create(test_di_graph)
         assert isinstance(p_graph, nx.DiGraph)
+
+
+class TestNodeReplacementPerturbation:
+    @pytest.fixture(scope="class")
+    def test_graph(self) -> nx.Graph:
+        # Create a simple graph
+        graph = nx.Graph()
+
+        graph.add_node("A", node_name="A", node_type="type_1")
+        graph.add_node("B", node_name="B", node_type="type_2")
+        graph.add_node("C", node_name="C", node_type="type_2")
+
+        graph.add_edge("A", "B")
+        graph.add_edge("B", "C")
+
+        return graph
+
+    @pytest.fixture(scope="class")
+    def replace_map(self) -> dict[str, dict[str, list[str]]]:
+        return {
+            "node_type": {
+                "type_1": ["A", "B", "D", "E", "F"],
+                "type_2": ["C", "G"],
+            }
+        }
+
+    def test_init_invalid_input(
+        self, replace_map: dict[str, dict[str, list[str]]]
+    ) -> None:
+        # Check an error raised when neither `replace_opts` or `replace_map` specified
+        with pytest.raises(ValueError):
+            _ = perturbation.NodeReplacementPerturbation(node_attr_field="node_name")
+
+        # Check an error raised when both `replace_opts` and `replace_map` specified
+        with pytest.raises(ValueError):
+            _ = perturbation.NodeReplacementPerturbation(
+                node_attr_field="node_name",
+                replace_opts=["B", "C"],
+                replace_map=replace_map,
+            )
+
+        # Checks an error raised if `replace_map` conditions on multiple node attributes
+        extra_replace_map = copy.deepcopy(replace_map)
+        extra_replace_map["node_name"] = {
+            "A": ["B", "C"],
+            "B": ["A", "C"],
+            "C": ["A", "B"],
+        }
+        with pytest.raises(ValueError):
+            _ = perturbation.NodeReplacementPerturbation(
+                node_attr_field="node_name", replace_map=extra_replace_map
+            )
+
+    def test_create_replace_map(
+        self, test_graph: nx.Graph, replace_map: dict[str, dict[str, list[str]]]
+    ) -> None:
+        perturber = perturbation.NodeReplacementPerturbation(
+            node_attr_field="node_name",
+            replace_map=replace_map,
+        )
+        p_graph = perturber.create(test_graph, replace_node="A")
+
+        node_names = [p_graph.nodes[n]["node_name"] for n in p_graph.nodes]
+        assert "A" not in node_names
+
+        # Find the node that was replaced (should be "type_1")
+        replace_node = None
+        for node in p_graph.nodes:
+            if p_graph.nodes[node]["node_type"] == "type_1":
+                replace_node = node
+
+        assert replace_node
+        # Checks that it was replaced with one of the types from the dict
+        assert (
+            p_graph.nodes[replace_node]["node_name"]
+            in replace_map["node_type"]["type_1"]
+        )
+
+    def test_create_replace_opts(self, test_graph: nx.Graph) -> None:
+        replace_opts = ["A", "B", "C"]
+        perturber = perturbation.NodeReplacementPerturbation(
+            node_attr_field="node_name",
+            replace_opts=replace_opts,
+        )
+        p_graph = perturber.create(test_graph, replace_node="A")
+
+        node_names = [p_graph.nodes[n]["node_name"] for n in p_graph.nodes]
+        assert "A" not in node_names
+
+        # Find the node that was replaced (should be "type_1")
+        replace_node = None
+        for node in p_graph.nodes:
+            if p_graph.nodes[node]["node_type"] == "type_1":
+                replace_node = node
+
+        assert replace_node
+        # Checks that it was replaced with one of the types from the list
+        assert p_graph.nodes[replace_node]["node_name"] in replace_opts
+
+    def test_create_no_new_name(self, test_graph: nx.Graph) -> None:
+        # Only allow for replacement of same-type as current node
+        node_type_opts = {"node_type": {"type_1": ["A"]}}
+
+        perturber = perturbation.NodeReplacementPerturbation(
+            node_attr_field="node_name", replace_map=node_type_opts
+        )
+        with pytest.raises(perturbation.NoValidNodeError):
+            _ = perturber.create(test_graph, replace_node="A")
+
+        # Checks error also raised for `replace_opts`
+        perturber = perturbation.NodeReplacementPerturbation(
+            node_attr_field="node_name", replace_opts=["A"]
+        )
+        with pytest.raises(perturbation.NoValidNodeError):
+            _ = perturber.create(test_graph, replace_node="A")
+
+    def test_create_no_replace_node(
+        self,
+        test_graph: nx.Graph,
+        replace_map: dict[str, dict[str, list[str]]],
+    ) -> None:
+        perturber = perturbation.NodeReplacementPerturbation(
+            node_attr_field="node_name", replace_map=replace_map
+        )
+        p_graph = perturber.create(test_graph)
+
+        node_names = [p_graph.nodes[n]["node_name"] for n in p_graph.nodes]
+        assert node_names != ["A", "B", "C"]
 
 
 class MockPerturbation(perturbation.BasePerturbation):
