@@ -490,7 +490,7 @@ class NodeReplacementPerturbation(BasePerturbation):
             If there is no node to replace with found in the `replace_map`
         """
         if not replace_node:
-            replace_node = np.random.choice(list(graph.nodes))
+            replace_node = str(np.random.choice(list(graph.nodes)))
 
         node_attr_val = graph.nodes[replace_node][self.node_attr_field]
         if self.replace_map:
@@ -515,6 +515,13 @@ class NodeReplacementPerturbation(BasePerturbation):
         new_node = np.random.choice(valid_replace_opts)
         attr_update = {replace_node: {self.node_attr_field: str(new_node)}}
         nx.set_node_attributes(p_graph, attr_update)
+
+        self._log_perturbation(
+            perturbation_type="node_replacement",
+            src_node=replace_node,
+            target_node=None,
+            metadata=attr_update,
+        )
 
         return p_graph
 
