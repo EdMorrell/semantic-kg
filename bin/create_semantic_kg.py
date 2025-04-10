@@ -7,7 +7,7 @@ from typing_extensions import Annotated
 from dotenv import load_dotenv
 from pydantic import BaseModel, AfterValidator
 
-from semantic_kg import prompts
+from bin import ROOT_DIR, GENERATION_CONFIG_PATHS, PROMPT_CONFIG_MAP
 from semantic_kg import models
 from semantic_kg.quality_control import utils
 from semantic_kg.utils import load_subgraph_dataset
@@ -18,26 +18,12 @@ from semantic_kg.generation import (
 )
 
 
-ROOT_DIR = Path(__file__).parent.parent
-
-
-CONFIG_PATHS = {
-    "oregano": ROOT_DIR / "config" / "generation" / "oregano.yaml",
-    "prime_kg": ROOT_DIR / "config" / "generation" / "prime_kg.yaml",
-}
-
-PROMPT_CONFIG_MAP = {
-    "oregano": prompts.OREGANO_PROMPT_CONFIG,
-    "prime_kg": prompts.PRIME_KG_PROMPT_CONFIG,
-}
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dataset_name",
         type=str,
-        help=f"Name of dataset to load. Options are {list(CONFIG_PATHS.keys())}",
+        help=f"Name of dataset to load. Options are {list(GENERATION_CONFIG_PATHS.keys())}",
         required=False,
     )
     parser.add_argument(
@@ -156,7 +142,7 @@ if __name__ == "__main__":
         raise ValueError("`dataset_name` and `config_path` can't both be None")
 
     if args.dataset_name:
-        config_path = CONFIG_PATHS[args.dataset_name]
+        config_path = GENERATION_CONFIG_PATHS[args.dataset_name]
     else:
         config_path = args.config_path
 
