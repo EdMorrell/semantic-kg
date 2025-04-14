@@ -53,7 +53,12 @@ You could say:
 """
 
 
-codex_prompt_rules = """
+codex_prompt_rules = """In your final response, do NOT put name of any node or relation in quotes.
+For example for the node `{{"name": "The Godfather"}}`:
+    'The movie  "The Godfather"...' is **not** allowed
+    '... starred in the movie "The Godfather"' is **not** allowed
+    '... alongside Marlon Brando in 'The Godfather' is allowed
+
 You may slightly rephrase the names of edges to ensure they are grammatically correct and produce a fluent, coherent sounding statement
 """
 
