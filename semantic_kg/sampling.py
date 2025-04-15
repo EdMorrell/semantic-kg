@@ -700,7 +700,7 @@ class SubgraphDataset:
 
             try:
                 perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
-            except UnicodeDecodeError:
+            except (UnicodeEncodeError, UnicodeDecodeError):
                 retries += 1
                 continue
 

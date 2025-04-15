@@ -5,31 +5,37 @@ from typing_extensions import Annotated
 from pydantic import BaseModel, AfterValidator
 
 from semantic_kg import prompts
+from semantic_kg.prompts import codex
 from semantic_kg.datasets import EDGE_MAPPING_TYPE
-from semantic_kg.datasets.oregano import OreganoLoader
-from semantic_kg.datasets.prime_kg import PrimeKGLoader
+from semantic_kg.datasets import OreganoLoader
+from semantic_kg.datasets import PrimeKGLoader
+from semantic_kg.datasets import CodexLoader
 
 ROOT_DIR = Path(__file__).parent.parent
 
 DATASET_CONFIG_PATHS = {
     "oregano": ROOT_DIR / "config" / "datasets" / "oregano.yaml",
     "prime_kg": ROOT_DIR / "config" / "datasets" / "prime_kg.yaml",
+    "codex": ROOT_DIR / "config" / "datasets" / "codex.yaml",
 }
 
 GENERATION_CONFIG_PATHS = {
     "oregano": ROOT_DIR / "config" / "generation" / "oregano.yaml",
     "prime_kg": ROOT_DIR / "config" / "generation" / "prime_kg.yaml",
+    "codex": ROOT_DIR / "config" / "generation" / "codex.yaml",
 }
 
 DATASET_LOADERS = {
     "oregano": OreganoLoader,
     "prime_kg": PrimeKGLoader,
+    "codex": CodexLoader,
 }
 
 
 PROMPT_CONFIG_MAP = {
     "oregano": prompts.OREGANO_PROMPT_CONFIG,
     "prime_kg": prompts.PRIME_KG_PROMPT_CONFIG,
+    "codex": codex.CODEX_PROMPT_CONFIG,  # Different namespace as loading config is slow
 }
 
 

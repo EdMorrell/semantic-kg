@@ -1,0 +1,10 @@
+dataset_name: codex
+data_dir: datasets/codex
+src_node_id_field: head
+src_node_type_field: head_type
+src_node_name_field: head_name
+edge_name_field: relation_name
+target_node_id_field: tail
+target_node_type_field: tail_type
+target_node_name_field: tail_name
+directed_graph: true
