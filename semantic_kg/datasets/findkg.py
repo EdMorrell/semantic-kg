@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from semantic_kg.datasets import BaseDatasetLoader
+from semantic_kg.datasets.base import BaseDatasetLoader
 
 
 class FindKGDatasetLoader(BaseDatasetLoader):
