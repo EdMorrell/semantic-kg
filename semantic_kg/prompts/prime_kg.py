@@ -1,12 +1,3 @@
-from functools import partial
-
-from semantic_kg.prompts import scorer
-from semantic_kg.prompts import schema
-from semantic_kg.prompts.default import (
-    triple_prompt_template,
-    triple_prompt_template_directed,
-)
-
 NODE_TYPES = "['gene/protein', 'drug', 'effect/phenotype', 'disease', 'biological_process', 'molecular_function', 'cellular_component', 'exposure', 'pathway', 'anatomy']"
 EDGE_TYPES = "['ppi', 'carrier', 'enzyme', 'target', 'transporter', 'contraindication', 'indication', 'off-label use', 'synergistic interaction', 'associated with', 'parent-child', 'phenotype absent', 'phenotype present', 'side effect', 'interacts with', 'linked to', 'expression present', 'expression absent']"
 
@@ -152,40 +143,3 @@ kg_extractor_single_step_fewshot_examples = """
     ]
 }}
 """
-
-
-def get_default_prompt_template(directed: bool = True) -> str:
-    """Helper function to generate a default prompt template for PrimeKG"""
-    template = triple_prompt_template_directed if directed else triple_prompt_template
-    rule_formatter = partial(
-        template.format,
-        fewshot_examples=prime_kg_fewshot_examples,
-        dataset_rules=prime_kg_prompt_rules,
-    )
-
-    return rule_formatter(triples="{triples}")
-
-
-def get_entity_extractor_system_prompt() -> str:
-    """Helper function to generate the entity-extractor system prompt"""
-    # TODO: Support generating a system prompt with type
-    return scorer.entity_extractor_system_prompt_template.format(
-        node_types=NODE_TYPES,
-        response_schema=schema.entity_response_schema,
-        fewshot_examples=entity_extractor_fewshot_examples,
-    )
-
-
-def get_kg_extractor_system_prompt(directed: bool = True) -> str:
-    """Helper function to generate the KG-extractor system prompt"""
-    template = (
-        scorer.kg_extractor_system_prompt_template_directed
-        if directed
-        else scorer.kg_extractor_system_prompt_template
-    )
-
-    return template.format(
-        edge_types=EDGE_TYPES,
-        response_schema=schema.triple_response_format,
-        fewshot_examples=kg_extractor_fewshot_examples,
-    )

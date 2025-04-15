@@ -519,6 +519,17 @@ class SubgraphDataset:
                     for d in p_subgraph_triples
                 ]
             )
+        elif log_item["type"] == "node_replacement":
+            # Checks what name a node was replace with and checks this is in the
+            # perturbed subgraph
+            replace_name = log_item["metadata"][log_item["source"]]["node_name"]
+            return any(
+                [
+                    d["source_node"]["name"] == replace_name
+                    or d["target_node"]["name"] == replace_name
+                    for d in p_subgraph_triples
+                ]
+            )
         else:
             raise ValueError(f"Unsupported perturbation type: {log_item['type']}")
 
@@ -689,7 +700,7 @@ class SubgraphDataset:
 
             try:
                 perturbed_subgraph_hash = self._get_graph_hash(perturbed_subgraph)
-            except UnicodeDecodeError:
+            except (UnicodeEncodeError, UnicodeDecodeError):
                 retries += 1
                 continue
 

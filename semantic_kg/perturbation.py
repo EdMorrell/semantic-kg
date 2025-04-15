@@ -405,6 +405,127 @@ class NodeRemovalPerturbation(BasePerturbation):
         return perturbed_graph
 
 
+class NodeReplacementPerturbation(BasePerturbation):
+    def __init__(
+        self,
+        node_attr_field: str,
+        replace_opts: Optional[list[str]] = None,
+        replace_map: Optional[dict[str, dict[str, list[str]]]] = None,
+        directed: bool = True,
+    ) -> None:
+        """Perturber for replacing a node
+
+        This perturber will randomly replace a node's attributes, for example the
+        node's name. What the attribute is replaced with can be defined as a list
+        of possible options, or a map if you want to replace depending on another
+        node attribute, for example, if the new attribute depends on the node's type
+
+        If specifying a list of options to replace with, use: `replace_opts`
+        whereas if specifying a map, use: `replace_map`
+
+        Parameters
+        ----------
+        node_attr_field : str
+            Node attribute field to replace
+        replace_opts : Optional[list[str]], optional
+            If all nodes can be replaced with any value, then specify a list of values
+            the `node_attr_field` in the perturbed graph can take. If this arg is not
+            specified then `replace_map` must be.
+        replace_map : Optional[dict[str, dict[str, list[str]]]], optional
+            A dict that defines options what new node attribute a node can
+            take, based on the value of another attribute, for example:
+
+            replace_map = {
+                "node_type":
+                    "A": [1, 2, 3],
+                    "B": [4, 5, 6],
+            }
+
+            This will replace the `node_attr_field` with 1, 2, or 3 if the `node_type`
+            attribute is set to "A", or 4, 5, or 6, if the `node_type` is set to "B".
+        directed : bool, optional
+            Whether the graph is directed or now, by default True
+
+        Raises
+        ------
+        ValueError
+            If neither `replace_opts` or `replace_map` is set, or if both are set.
+        ValueError
+            If more than one conditioning attribute is set in `replace_map`
+        """
+        super().__init__(directed)
+        self.node_attr_field = node_attr_field
+        if not replace_opts and not replace_map:
+            raise ValueError("You must specify `replace_opts` or `replace_map`")
+        if replace_opts and replace_map:
+            raise ValueError("Cannot specify both `replace_map` and `replace_opts`")
+        self.replace_opts = replace_opts
+        self.replace_map = replace_map
+
+        if self.replace_map:
+            if len(self.replace_map.keys()) > 1:
+                raise ValueError(
+                    "Use of `replace_map` only supports conditioning on a "
+                    "single node attribute"
+                )
+
+    def create(self, graph: nx.Graph, replace_node: Optional[str] = None) -> nx.Graph:
+        """Replaces an attribute in a node
+
+        Parameters
+        ----------
+        graph : nx.Graph
+            Graph to perturb
+        rm_node : Optional[str], optional
+            Optionally specify a node to replace (for testing purposes), by default None
+
+        Returns
+        -------
+        nx.Graph
+            Perturbed graph
+
+        Raises
+        ------
+        NoValidNodeError
+            If there is no node to replace with found in the `replace_map`
+        """
+        if not replace_node:
+            replace_node = str(np.random.choice(list(graph.nodes)))
+
+        node_attr_val = graph.nodes[replace_node][self.node_attr_field]
+        if self.replace_map:
+            replace_key = list(self.replace_map.keys())[0]
+            replace_node_attr = graph.nodes[replace_node][replace_key]
+            replace_opts = self.replace_map[replace_key][replace_node_attr]
+        else:
+            replace_opts = self.replace_opts
+
+        valid_replace_opts = [
+            attr
+            for attr in replace_opts
+            if attr != node_attr_val  # type: ignore
+        ]
+        if not valid_replace_opts:
+            raise NoValidNodeError(
+                f"No valid options found to replace {self.node_attr_field} "
+                f"for node: {replace_node}"
+            )
+
+        p_graph = graph.copy()
+        new_node = np.random.choice(valid_replace_opts)
+        attr_update = {replace_node: {self.node_attr_field: str(new_node)}}
+        nx.set_node_attributes(p_graph, attr_update)
+
+        self._log_perturbation(
+            perturbation_type="node_replacement",
+            src_node=replace_node,
+            target_node=None,
+            metadata=attr_update,
+        )
+
+        return p_graph
+
+
 class GraphPerturber:
     def __init__(
         self,

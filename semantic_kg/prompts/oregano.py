@@ -1,12 +1,3 @@
-from functools import partial
-
-from semantic_kg.prompts import scorer, schema
-from semantic_kg.prompts.default import (
-    triple_prompt_template,
-    triple_prompt_template_directed,
-)
-
-
 NODE_TYPES = "['COMPOUND', 'GENE', 'DISEASE', 'PROTEIN', 'MOLECULE', 'ACTIVITY', 'EFFECT', 'PHENOTYPE', 'PATHWAY', 'INDICATION', 'SIDE_EFFECT']"
 
 EDGE_TYPES = "['has_target', 'increase_activity', 'has_activity', 'decrease_activity', 'increase_effect', 'has_effect', 'decrease_effect', 'increase_efficacy', 'decrease_efficacy', 'causes_condition', 'has_phenotype', 'is_affecting', 'is_substance_that_treats', 'acts_within', 'has_indication', 'has_side_effect', 'gene_product_of']"
@@ -114,47 +105,3 @@ kg_extractor_fewshot_example = """
     ]
 }}
 """
-
-
-def get_default_prompt_template(directed: bool = True) -> str:
-    """Helper function to generate a default prompt template for PrimeKG"""
-    template = triple_prompt_template_directed if directed else triple_prompt_template
-    rule_formatter = partial(
-        template.format,
-        fewshot_examples=oregano_fewshot_examples,
-        dataset_rules=oregano_prompt_rules,
-    )
-
-    return rule_formatter(triples="{triples}")
-
-
-def get_entity_extractor_system_prompt() -> str:
-    """Helper function to generate the entity-extractor system prompt"""
-    return scorer.entity_extractor_system_prompt_template.format(
-        node_types=NODE_TYPES,
-        response_schema=schema.entity_response_schema,
-        fewshot_examples=entity_extractor_fewshot_examples,
-    )
-
-
-def get_kg_extractor_system_prompt(
-    directed: bool = True, incl_valid_directions: bool = True
-) -> str:
-    """Helper function to generate the KG-extractor system prompt"""
-    if directed and incl_valid_directions:
-        template = scorer.kg_extractor_system_prompt_template_directed_valid_directions
-    elif directed and not incl_valid_directions:
-        template = scorer.kg_extractor_system_prompt_template_directed
-    else:
-        template = scorer.kg_extractor_system_prompt_template
-
-    kwargs = {}
-    if incl_valid_directions:
-        kwargs["edge_directions"] = VALID_EDGE_DIRECTIONS
-
-    return template.format(
-        edge_types=EDGE_TYPES,
-        response_schema=schema.triple_response_format,
-        fewshot_examples=oregano_fewshot_examples,
-        **kwargs,
-    )

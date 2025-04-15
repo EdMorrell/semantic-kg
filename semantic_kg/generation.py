@@ -52,6 +52,7 @@ class SubgraphPipeline:
         edge_replacement: bool = True,
         node_removal: bool = True,
         p_prob: Optional[list[float]] = None,
+        p_perturbation_range: Optional[tuple[float, float]] = None,
         kg_loader: Optional[KGLoader] = None,
         perturber: Optional[GraphPerturber] = None,
     ) -> None:
@@ -109,6 +110,9 @@ class SubgraphPipeline:
             p_node_removal]
             If not provided denotes to default of [0.3, 0.3, 0.3, 0.1] (such that node
             removal perturbations are slightly less probable.)
+        p_perturbation_range : Optional[tuple[float, float]], optional
+            Optionally specify the proportion of perturbations to apply, relative to the
+            number of nodes, by default None.
         kg_loader : Optional[KGLoader], optional
             Optionally provide an instance of KGLoader to load a knowledge-graph from
             `triple_df`, by default None
@@ -139,6 +143,7 @@ class SubgraphPipeline:
         self.edge_replacement = edge_replacement
         self.node_removal = node_removal
         self.p_prob = p_prob
+        self.p_perturbation_range = p_perturbation_range
 
         if not kg_loader:
             self.kg_loader = KGLoader(
@@ -169,7 +174,9 @@ class SubgraphPipeline:
         n_iter: int = 1000,
         n_node_range: tuple[int, int] = (3, 10),
         sample_method: Literal["bfs", "bfs_node_diversity"] = "bfs_node_diversity",
+        start_node_types: Optional[list[str]] = None,
         save_subgraphs: bool = False,
+        max_retries: Optional[int] = None,
     ) -> pd.DataFrame:
         """Generates a dataset of subgraph/perturbed subgraph pairs
 
@@ -186,6 +193,9 @@ class SubgraphPipeline:
             (3, 10)
         sample_method : Literal["bfs", "bfs_node_diversity"], optional
            Method to sample subgraph, by default "bfs_node_diversity"
+        start_node_types : Optional[list[str]], optional
+            A list of node-types to start a sampled subgraph from. Defaults to all possible
+            node-types.
         save_subgraphs : bool, optional
             If True then will save intermediate subgraphs. This will significantly
             slow execution, by default False
@@ -230,6 +240,13 @@ class SubgraphPipeline:
 
         sampler = SubgraphSampler(graph=g, method=sample_method)
 
+        kwargs = {}
+        if self.p_perturbation_range is not None:
+            kwargs["p_perturbation_range"] = self.p_perturbation_range
+
+        if start_node_types is not None:
+            kwargs["start_node_attrs"] = {"node_type": start_node_types}
+
         subgraph = SubgraphDataset(
             graph=g,
             subgraph_sampler=sampler,
@@ -237,8 +254,11 @@ class SubgraphPipeline:
             n_node_range=n_node_range,
             save_subgraphs=save_subgraphs,
             dataset_save_dir=self.save_path,  # type: ignore
+            **kwargs,  # type: ignore
         )
-        sample_df = subgraph.generate(n_iter, n_iter * 10)
+        if not max_retries:
+            max_retries = n_iter * 10
+        sample_df = subgraph.generate(n_iter, max_retries)
 
         return sample_df
 
