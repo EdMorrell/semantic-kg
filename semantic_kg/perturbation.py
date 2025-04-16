@@ -490,7 +490,7 @@ class NodeReplacementPerturbation(BasePerturbation):
             If there is no node to replace with found in the `replace_map`
         """
         if not replace_node:
-            replace_node = str(np.random.choice(list(graph.nodes)))
+            replace_node = np.random.choice(list(graph.nodes))
 
         node_attr_val = graph.nodes[replace_node][self.node_attr_field]
         if self.replace_map:
