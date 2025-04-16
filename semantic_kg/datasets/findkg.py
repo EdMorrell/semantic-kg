@@ -5,7 +5,7 @@ import pandas as pd
 from semantic_kg.datasets.base import BaseDatasetLoader
 
 
-class FindKGDatasetLoader(BaseDatasetLoader):
+class FindKGLoader(BaseDatasetLoader):
     def __init__(self, data_dir: Path | str) -> None:
         """Dataset loader for Financial Dynamic Knowledge-Graph
 
@@ -91,5 +91,5 @@ class FindKGDatasetLoader(BaseDatasetLoader):
 
 
 if __name__ == "__main__":
-    loader = FindKGDatasetLoader("datasets/findkg")
+    loader = FindKGLoader("datasets/findkg")
     triple_df = loader.load()
