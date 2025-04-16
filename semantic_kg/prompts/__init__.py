@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 from semantic_kg.prompts import oregano
 from semantic_kg.prompts import prime_kg
+from semantic_kg.prompts import findkg
 from semantic_kg.prompts import utils
 
 
@@ -43,6 +44,23 @@ PRIME_KG_PROMPT_CONFIG = PromptConfig(
     kg_extractor_scorer_prompt=utils.get_kg_extractor_system_prompt(
         edge_types=prime_kg.EDGE_TYPES,
         fewshot_examples=prime_kg.kg_extractor_fewshot_examples,
+        incl_valid_directions=False,
+    ),
+)
+
+
+FINDKG_PROMPT_CONFIG = PromptConfig(
+    response_model_prompt=utils.get_default_prompt_template(
+        fewshot_examples=findkg.findkg_fewshot_examples,
+        prompt_rules=findkg.findkg_prompt_rules,
+    ),
+    entity_extractor_scorer_prompt=utils.get_entity_extractor_system_prompt(
+        node_types=findkg.NODE_TYPES,
+        entity_extractor_fewshot_examples=findkg.entity_extractor_fewshot_examples,
+    ),
+    kg_extractor_scorer_prompt=utils.get_kg_extractor_system_prompt(
+        edge_types=findkg.EDGE_TYPES,
+        fewshot_examples=findkg.kg_extractor_fewshot_examples,
         incl_valid_directions=False,
     ),
 )
