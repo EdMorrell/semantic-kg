@@ -11,7 +11,8 @@ from semantic_kg.datasets import (
     OreganoLoader,
     PrimeKGLoader,
     CodexLoader,
-    FindKGDatasetLoader,
+    FindKGLoader,
+    GlobiLoader,
 )
 
 ROOT_DIR = Path(__file__).parent.parent
@@ -21,6 +22,7 @@ DATASET_CONFIG_PATHS = {
     "prime_kg": ROOT_DIR / "config" / "datasets" / "prime_kg.yaml",
     "codex": ROOT_DIR / "config" / "datasets" / "codex.yaml",
     "findkg": ROOT_DIR / "config" / "datasets" / "findkg.yaml",
+    "globi": ROOT_DIR / "config" / "datasets" / "globi.yaml",
 }
 
 GENERATION_CONFIG_PATHS = {
@@ -34,7 +36,8 @@ DATASET_LOADERS = {
     "oregano": OreganoLoader,
     "prime_kg": PrimeKGLoader,
     "codex": CodexLoader,
-    "findkg": FindKGDatasetLoader,
+    "findkg": FindKGLoader,
+    "globi": GlobiLoader,
 }
 
 

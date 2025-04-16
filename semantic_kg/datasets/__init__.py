@@ -6,7 +6,8 @@ import networkx as nx
 from semantic_kg.datasets.prime_kg import PrimeKGLoader  # noqa: F401
 from semantic_kg.datasets.oregano import OreganoLoader  # noqa: F401
 from semantic_kg.datasets.codex import CodexLoader  # noqa: F401
-from semantic_kg.datasets.findkg import FindKGDatasetLoader  # noqa: F401
+from semantic_kg.datasets.findkg import FindKGLoader  # noqa: F401
+from semantic_kg.datasets.globi import GlobiLoader  # noqa: F401
 
 
 EDGE_MAPPING_TYPE = dict[tuple[str, str], list[str]]
