@@ -1,0 +1,23 @@
+dataset_name: findkg
+dataset_path: datasets/findkg/cab093d9ac6a81c4a868ff098dc4a3bd.csv
+response_model_config:
+  model_name: openai
+  params:
+    model_id: gpt-4-32k
+    temperature: 1.0
+    cache_dir: outputs/responses/
+scorer_model_config:
+  entity_extractor_model:
+    model_name: openai
+    params:
+      model_id: gpt-4o
+      temperature: 1.0
+      structured_output: true
+      cache_dir: outputs/responses/
+  kg_extractor_model:
+    model_name: openai
+    params:
+      model_id: gpt-4o
+      temperature: 1.0
+      structured_output: true
+      cache_dir: outputs/responses/

@@ -57,7 +57,7 @@ codex_prompt_rules = """In your final response, do NOT put name of any node or r
 For example for the node `{{"name": "The Godfather"}}`:
     'The movie  "The Godfather"...' is **not** allowed
     '... starred in the movie "The Godfather"' is **not** allowed
-    '... alongside Marlon Brando in 'The Godfather' is allowed
+    '... alongside Marlon Brando in 'The Godfather' is **not** allowed
 
 You may slightly rephrase the names of edges to ensure they are grammatically correct and produce a fluent, coherent sounding statement
 """
@@ -109,15 +109,15 @@ kg_extractor_fewshot_examples = """
 3. Example entities: ["G.I. Joe: The Rise of Cobra", "Lee Byung-hun", "Marlon Wayans", "film director", "New York City", "Howard University", "film actor", "Seoul", "Korean"]
 3. Example text: "G.I. Joe: The Rise of Cobra, a film that takes place in Tokyo, starred Lee Byung-hun and Marlon Wayans. Wayans, also a film-director was born in New York City and attended Howard University. Meanwhile Lee Byung-hun is an actor born in Seoul who speaks Korean."
 [
-    {'source_node': {'name': 'G.I. Joe: The Rise of Cobra'}, 'relation': {'name': 'cast member'}, 'target_node': {'name': 'Lee Byung-hun'}},
-    {'source_node': {'name': 'G.I. Joe: The Rise of Cobra'}, 'relation': {'name': 'cast member'}, 'target_node': {'name': 'Marlon Wayans'}},
-    {'source_node': {'name': 'G.I. Joe: The Rise of Cobra'}, 'relation': {'name': 'narrative location'}, 'target_node': {'name': 'Tokyo'}},
-    {'source_node': {'name': 'Marlon Wayans'}, 'relation': {'name': 'occupation'}, 'target_node': {'name': 'film director'}},
-    {'source_node': {'name': 'Marlon Wayans'}, 'relation': {'name': 'place of birth'}, 'target_node': {'name': 'New York City'}},
-    {'source_node': {'name': 'Marlon Wayans'}, 'relation': {'name': 'educated at'}, 'target_node': {'name': 'Howard University'}},
-    {'source_node': {'name': 'Lee Byung-hun'}, 'relation': {'name': 'occupation'}, 'target_node': {'name': 'film actor'}},
-    {'source_node': {'name': 'Lee Byung-hun'}, 'relation': {'name': 'place of birth'}, 'target_node': {'name': 'Seoul'}},
-    {'source_node': {'name': 'Lee Byung-hun'}, 'relation': {'name': 'languages spoken, written, or signed'}, 'target_node': {'name': 'Korean'}},
+    {{'source_node': {{'name': 'G.I. Joe: The Rise of Cobra'}}, 'relation': {{'name': 'cast member'}}, 'target_node': {{'name': 'Lee Byung-hun'}}}},
+    {{'source_node': {{'name': 'G.I. Joe: The Rise of Cobra'}}, 'relation': {{'name': 'cast member'}}, 'target_node': {{'name': 'Marlon Wayans'}}}},
+    {{'source_node': {{'name': 'G.I. Joe: The Rise of Cobra'}}, 'relation': {{'name': 'narrative location'}}, 'target_node': {{'name': 'Tokyo'}}}},
+    {{'source_node': {{'name': 'Marlon Wayans'}}, 'relation': {{'name': 'occupation'}}, 'target_node': {{'name': 'film director'}}}},
+    {{'source_node': {{'name': 'Marlon Wayans'}}, 'relation': {{'name': 'place of birth'}}, 'target_node': {{'name': 'New York City'}}}},
+    {{'source_node': {{'name': 'Marlon Wayans'}}, 'relation': {{'name': 'educated at'}}, 'target_node': {{'name': 'Howard University'}}}},
+    {{'source_node': {{'name': 'Lee Byung-hun'}}, 'relation': {{'name': 'occupation'}}, 'target_node': {{'name': 'film actor'}}}},
+    {{'source_node': {{'name': 'Lee Byung-hun'}}, 'relation': {{'name': 'place of birth'}}, 'target_node': {{'name': 'Seoul'}}}},
+    {{'source_node': {{'name': 'Lee Byung-hun'}}, 'relation': {{'name': 'languages spoken, written, or signed'}}, 'target_node': {{'name': 'Korean'}}}},
 ]
 """
 
