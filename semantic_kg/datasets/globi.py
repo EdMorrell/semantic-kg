@@ -70,6 +70,30 @@ class GlobiLoader(BaseDatasetLoader):
 
         return df
 
+    def _replace_duplicate_ids(
+        self, df: pd.DataFrame, id_field: str, name_field: str, type_field: str
+    ) -> pd.DataFrame:
+        """Finds any IDs that map to the same name and type, and replaces them with the
+        first ID instance.
+
+        # TODO: Make this a standalone function in utils
+        """
+        grp_df = df.groupby([name_field, type_field])[id_field].apply(
+            lambda x: list(set(x))
+        )
+        ids = grp_df.to_list()
+        replace_map = {}
+        for id in ids:
+            if len(id) == 1:
+                replace_map[id[0]] = id[0]
+            else:
+                first = id[0]
+                for dupl_id in id:
+                    replace_map[dupl_id] = first
+
+        df[id_field] = df[id_field].apply(lambda x: replace_map[x])
+        return df
+
     def load(self) -> pd.DataFrame:
         src_type_field = f"sourceTaxon{self.type_rank}Name"
         target_type_field = f"targetTaxon{self.type_rank}Name"
@@ -85,20 +109,22 @@ class GlobiLoader(BaseDatasetLoader):
         # Remove rows with null type-fields
         df = df.dropna(axis=0, subset=[src_type_field, target_type_field])
 
+        # Remove entities with a missing ID ("no:match")
+        df = df[
+            (df["sourceTaxonId"] != "no:match") & (df["targetTaxonId"] != "no:match")
+        ]
+
+        # Merges any IDs that map to the same name and type
+        df = self._replace_duplicate_ids(
+            df, "sourceTaxonId", "sourceTaxonName", src_type_field
+        )
+        df = self._replace_duplicate_ids(
+            df, "targetTaxonId", "targetTaxonName", target_type_field
+        )
+
         return df
 
 
 if __name__ == "__main__":
-    from semantic_kg.datasets import create_edge_map
-
     loader = GlobiLoader("datasets/globi")
     df = loader.load()
-
-    edge_map = create_edge_map(
-        df,
-        src_node_type_field="sourceTaxonFamilyName",
-        target_node_type_field="targetTaxonFamilyName",
-        edge_name_field="interactionTypeName",
-        directed=True,
-    )
-    replace_map = {k: v for k, v in edge_map.items() if len(v) > 1}
