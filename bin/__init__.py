@@ -6,6 +6,7 @@ from pydantic import BaseModel, AfterValidator
 
 from semantic_kg import prompts
 from semantic_kg.prompts import codex
+from semantic_kg.prompts import globi
 from semantic_kg.datasets import (
     EDGE_MAPPING_TYPE,
     OreganoLoader,
@@ -30,6 +31,7 @@ GENERATION_CONFIG_PATHS = {
     "prime_kg": ROOT_DIR / "config" / "generation" / "prime_kg.yaml",
     "codex": ROOT_DIR / "config" / "generation" / "codex.yaml",
     "findkg": ROOT_DIR / "config" / "generation" / "findkg.yaml",
+    "globi": ROOT_DIR / "config" / "generation" / "globi.yaml",
 }
 
 DATASET_LOADERS = {
@@ -46,6 +48,7 @@ PROMPT_CONFIG_MAP = {
     "prime_kg": prompts.PRIME_KG_PROMPT_CONFIG,
     "codex": codex.CODEX_PROMPT_CONFIG,  # Different namespace as loading config is slow
     "findkg": prompts.FINDKG_PROMPT_CONFIG,
+    "globi": globi.GLOBI_PROMPT_CONFIG,  # Different namespace as loading config is slow
 }
 
 
