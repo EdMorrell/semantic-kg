@@ -25,7 +25,7 @@ make init
 
 This command will:
 
-* Download the necessary datasets (PrimeKG and Oregano).
+* Download all available datasets (*NOTE*: This can be slow. [Download individual datasets](#downloading-individual-datasets) if only requiring certain ones).
 * Create and activate a uv virtual environment.
 * Install the required Python packages within the virtual environment.
 
@@ -76,12 +76,30 @@ All default pipeline configuration files are located under [config/](config/)
 
 ## Datasets
 
-### Oregano
+### Downloading Individual Datasets
+
+To download the data required to load a single dataset, run:
+
+```bash
+make download_dataset DATASET_NAME=<name-of-dataset>
+```
+
+### Available Datasets
+
+#### Codex
+[Codex](https://github.com/tsafavi/codex) is a general-knowledge, knowledge-graph based on [Wikidata](https://www.wikidata.org/wiki/Wikidata:Main_Page)
+
+#### Oregano
 [Oregano](https://gitub.u-bordeaux.fr/erias/oregano) is a drug repositioning knowledge-graph dataset containing information on entities such as drugs, drug-targets, indications and side-effects.
 
-
-### PrimeKG
+#### PrimeKG
 [PrimeKG](https://zitniklab.hms.harvard.edu/projects/PrimeKG/) is a precision medicine knowledge-graph dataset containing relationships between entities such as drugs, diseases and molecular and genetic factors.
+
+#### Globi
+[Global Biotics Interactions](https://www.globalbioticinteractions.org/data) is a knowledge-graph describing species interactions (e.g. predator-prey interactions, pollinator-plant interactions)
+
+#### FinDKG
+[FinDKG](https://xiaohui-victor-li.github.io/FinDKG/) is a global financial knowledge-graph describing global economic and market trends.
 
 
 ## Tests
