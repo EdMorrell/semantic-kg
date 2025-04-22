@@ -1,0 +1,10 @@
+dataset_name: globi
+data_dir: datasets/globi
+src_node_id_field: sourceTaxonId
+src_node_type_field: sourceTaxonFamilyName
+src_node_name_field: sourceTaxonName
+edge_name_field: interactionTypeName
+target_node_id_field: targetTaxonId
+target_node_type_field: targetTaxonFamilyName
+target_node_name_field: targetTaxonName
+directed_graph: true

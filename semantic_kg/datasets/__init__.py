@@ -6,7 +6,8 @@ import networkx as nx
 from semantic_kg.datasets.prime_kg import PrimeKGLoader  # noqa: F401
 from semantic_kg.datasets.oregano import OreganoLoader  # noqa: F401
 from semantic_kg.datasets.codex import CodexLoader  # noqa: F401
-from semantic_kg.datasets.findkg import FindKGDatasetLoader  # noqa: F401
+from semantic_kg.datasets.findkg import FindKGLoader  # noqa: F401
+from semantic_kg.datasets.globi import GlobiLoader  # noqa: F401
 
 
 EDGE_MAPPING_TYPE = dict[tuple[str, str], list[str]]
@@ -129,6 +130,18 @@ def create_edge_map(
     edge_name_field: str,
     directed: bool = True,
 ) -> dict[tuple[str, str], list[str]]:
+    """Creates a map of node-types to edge-types
+
+    Uses the existing dataset to characterise what types of edge-types
+    are shared between different node-types. Can be used for defining
+    acceptable edge-replacements
+
+    Returns
+    -------
+    dict[tuple[str, str], list[str]]
+        A dictionary denoting each node-type pair and all corresponding
+        edge-types
+    """
     triple_df["node_types"] = list(
         triple_df[[src_node_type_field, target_node_type_field]].itertuples(
             index=False, name=None
