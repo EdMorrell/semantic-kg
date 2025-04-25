@@ -40,8 +40,44 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--n_iter",
         type=int,
-        help="Number of subgraphs to include in final dataset",
+        help="Number of subgraphs to include in final dataset for all perturbations.",
         default=1000,
+    )
+    parser.add_argument(
+        "--n_iter_node_removal",
+        type=int,
+        help=(
+            "Number of subgraphs to include in final dataset for node removal "
+            "perturbation. Overwrites `--n_iter` for these perturbations if specified."
+        ),
+        required=False,
+    )
+    parser.add_argument(
+        "--n_iter_node_replacement",
+        type=int,
+        help=(
+            "Number of subgraphs to include in final dataset for node replacement "
+            "perturbation. Overwrites `--n_iter` for these perturbations if specified."
+        ),
+        required=False,
+    )
+    parser.add_argument(
+        "--n_iter_edge_deletion",
+        type=int,
+        help=(
+            "Number of subgraphs to include in final dataset for edge deletion "
+            "perturbation. Overwrites `--n_iter` for these perturbations if specified."
+        ),
+        required=False,
+    )
+    parser.add_argument(
+        "--n_iter_edge_replacement",
+        type=int,
+        help=(
+            "Number of subgraphs to include in final dataset for edge replacement "
+            "perturbation. Overwrites `--n_iter` for these perturbations if specified."
+        ),
+        required=False,
     )
     parser.add_argument(
         "--min_nodes",
@@ -136,6 +172,7 @@ def main(
     save_path: Path,
     min_nodes: int = 10,
     max_nodes: int = 20,
+    perturbation_n_iter: Optional[dict[str, int]] = None,
 ) -> None:
     """Entry-point to subgraph generation pipeline code
 
@@ -153,6 +190,9 @@ def main(
         Minimum number of nodes per subgraph, by default 3
     max_nodes : int, optional
         Maximum number of nodes per subgraph, by default 10
+    perturbation_n_iter : dict[str, int], optional
+        Optionally specify `n_iter` for specific perturbation-types
+        using a mapping from perturbation to `n_iter`
     """
     random.seed(random_seed)
     np.random.seed(random_seed)
@@ -235,12 +275,16 @@ def main(
             }
         else:
             kwargs = {}
+        if perturbation_n_iter and p_type in perturbation_n_iter:
+            p_n_iter = perturbation_n_iter[p_type]
+        else:
+            p_n_iter = n_iter
         print(f"Generating dataset for {p_type.replace("_", " ")} perturbation")
         p_df = _generate_dataset(
             config,
             perturber,
             df,
-            n_iter,
+            p_n_iter,
             min_nodes,
             max_nodes,
             save_path,
@@ -282,10 +326,21 @@ if __name__ == "__main__":
     if args.max_nodes is not None:
         kwargs["max_nodes"] = args.max_nodes
 
+    perturbation_n_iter = {}
+    if args.n_iter_edge_deletion is not None:
+        perturbation_n_iter["edge_deletion"] = args.n_iter_edge_deletion
+    if args.n_iter_edge_replacement is not None:
+        perturbation_n_iter["edge_replacement"] = args.n_iter_edge_replacement
+    if args.n_iter_node_removal is not None:
+        perturbation_n_iter["node_removal"] = args.n_iter_node_removal
+    if args.n_iter_node_replacement is not None:
+        perturbation_n_iter["node_replacement"] = args.n_iter_node_replacement
+
     main(
         dataset_config,
         n_iter=args.n_iter,
         random_seed=args.random_seed,
         save_path=save_path,
+        perturbation_n_iter=perturbation_n_iter,
         **kwargs,
     )
