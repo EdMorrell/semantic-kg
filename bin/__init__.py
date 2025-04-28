@@ -1,3 +1,5 @@
+import sys
+import warnings
 from pathlib import Path
 from typing import Optional
 from typing_extensions import Annotated
@@ -5,8 +7,21 @@ from typing_extensions import Annotated
 from pydantic import BaseModel, AfterValidator
 
 from semantic_kg import prompts
-from semantic_kg.prompts import codex
-from semantic_kg.prompts import globi
+
+try:
+    from semantic_kg.prompts import codex
+except FileNotFoundError:
+    warnings.warn(
+        "Codex data currently missing. "
+        "Please run `make download_dataset DATASET_NAME=codex` to use this dataset."
+    )
+try:
+    from semantic_kg.prompts import globi
+except FileNotFoundError:
+    warnings.warn(
+        "Globi data currently missing. "
+        "Please run `make download_dataset DATASET_NAME=globi` to use this dataset."
+    )
 from semantic_kg.datasets import (
     EDGE_MAPPING_TYPE,
     OreganoLoader,
@@ -46,10 +61,14 @@ DATASET_LOADERS = {
 PROMPT_CONFIG_MAP = {
     "oregano": prompts.OREGANO_PROMPT_CONFIG,
     "prime_kg": prompts.PRIME_KG_PROMPT_CONFIG,
-    "codex": codex.CODEX_PROMPT_CONFIG,  # Different namespace as loading config is slow
     "findkg": prompts.FINDKG_PROMPT_CONFIG,
-    "globi": globi.GLOBI_PROMPT_CONFIG,  # Different namespace as loading config is slow
 }
+
+# Codex and Globi are imported under a separate namespace to avoid slow imports
+if "semantic_kg.prompts.codex" in sys.modules:
+    PROMPT_CONFIG_MAP["codex"] = codex.CODEX_PROMPT_CONFIG
+if "semantic_kg.prompts.globi" in sys.modules:
+    PROMPT_CONFIG_MAP["globi"] = globi.GLOBI_PROMPT_CONFIG
 
 
 def _dataset_name_validator(name: str) -> str:
