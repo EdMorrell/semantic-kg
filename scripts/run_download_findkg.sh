@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DPATH=${1:-datasets/findkg/}
-GH_ROOT_DIR="https://raw.githubusercontent.com/xiaohui-victor-li/FinDKG/refs/heads/main/FinDKG_dataset/FinDKG-full/"
+GH_ROOT_DIR="https://raw.githubusercontent.com/xiaohui-victor-li/FinDKG/refs/heads/main/FinDKG_dataset/FinDKG/"
 
 if [ ! -d $DPATH ]; then
     mkdir -p $DPATH
