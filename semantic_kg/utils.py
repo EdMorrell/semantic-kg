@@ -1,3 +1,4 @@
+import re
 import ast
 import string
 from typing import Optional
@@ -60,6 +61,10 @@ def load_subgraph_dataset(fpath: Path | str) -> pd.DataFrame:
         "perturbation_log",
     ]
     for col in transform_cols:
+        # Removes any np.str_ formatted strings
+        subgraph_dataset[col] = subgraph_dataset[col].apply(
+            lambda x: re.sub(r"np\.str_\(\'(.+?)\'\)", r"'\1'", x)
+        )
         subgraph_dataset[col] = subgraph_dataset[col].apply(ast.literal_eval)
 
     return subgraph_dataset
