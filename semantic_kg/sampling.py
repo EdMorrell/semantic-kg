@@ -389,14 +389,13 @@ class SubgraphDataset:
     def _sample_start_node(self) -> int | str:
         all_nodes = list(self.graph.nodes)
         if self.start_node_attrs:
+            # Convert values to a set for faster lookup
+            start_node_attrs = {k: set(v) for k, v in self.start_node_attrs.items()}
             valid_nodes = [
                 n
                 for n in all_nodes
                 if any(
-                    [
-                        any(self.graph.nodes[n][k] == i_v for i_v in v)
-                        for k, v in self.start_node_attrs.items()
-                    ]
+                    [self.graph.nodes[n][k] in v for k, v in start_node_attrs.items()]
                 )
             ]
             if not valid_nodes:
