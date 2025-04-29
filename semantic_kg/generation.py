@@ -14,7 +14,6 @@ from semantic_kg.sampling import SubgraphSampler, SubgraphDataset
 from semantic_kg.perturbation import GraphPerturber, build_perturber
 from semantic_kg.datasets import (
     KGLoader,
-    create_edge_map,
     get_valid_node_pairs,
     EDGE_MAPPING_TYPE,
 )
@@ -45,7 +44,7 @@ class SubgraphPipeline:
         directed: bool,
         save_path: Optional[Path | str] = None,
         edge_map: Optional[EDGE_MAPPING_TYPE] = None,
-        replace_map: Optional[EDGE_MAPPING_TYPE] = None,
+        replace_map: Optional[dict[str, list[str]]] = None,
         valid_node_pairs: Optional[list[tuple[str, str]]] = None,
         edge_addition: bool = True,
         edge_deletion: bool = True,
@@ -84,12 +83,15 @@ class SubgraphPipeline:
             e.g. ("PROTEIN", "PROTEIN"): ["protein-protein-interaction"]), If not
             provided will be inferred automatically from the `triple_df`. By default
             None
-        replace_map : Optional[EDGE_MAPPING_TYPE], optional
-            Map denoting accepted replacement values for edges during a replacement
-            perturbation. Replacement mappings are denoted by a mapping from node-type
-            to valid edge-values. For example: {
-                ("DRUG", "PROTEIN"): ["activates", "inhibits"]
-            }
+        replace_map : Optional[dict[str, list[str]]], optional
+            A map denoting acceptable replacement values for a given edge-name. Defined
+            as a dictionary, for example:
+                {
+                    "expression_absent": ["expression_present"],
+                    "expression_present": ["expression_absent"],
+                    "indication": ["contraindication", "off-label use"],
+                    ...
+                }
             If not provided will be inferred automatically from `triple_df`. By default
             None
         valid_node_pairs : Optional[list[tuple[str, str]]], optional
@@ -175,6 +177,7 @@ class SubgraphPipeline:
         n_node_range: tuple[int, int] = (3, 10),
         sample_method: Literal["bfs", "bfs_node_diversity"] = "bfs_node_diversity",
         start_node_types: Optional[list[str]] = None,
+        start_node_names: Optional[list[str]] = None,
         save_subgraphs: bool = False,
         max_retries: Optional[int] = None,
     ) -> pd.DataFrame:
@@ -194,8 +197,12 @@ class SubgraphPipeline:
         sample_method : Literal["bfs", "bfs_node_diversity"], optional
            Method to sample subgraph, by default "bfs_node_diversity"
         start_node_types : Optional[list[str]], optional
-            A list of node-types to start a sampled subgraph from. Defaults to all possible
-            node-types.
+            A list of node-types to start a sampled subgraph from. Defaults to all
+            possible node-types. If specifying then cannot also specify
+            `start_node_names`.
+        start_node_names : Optional[list[str]], optional
+            A list of node-names to start a sampled subgraph from. Defaults to all
+            possible nodes. If specifying the cannot also specify `start_node_types`.
         save_subgraphs : bool, optional
             If True then will save intermediate subgraphs. This will significantly
             slow execution, by default False
@@ -205,10 +212,15 @@ class SubgraphPipeline:
         pd.DataFrame
             Final subgraph dataframe
         """
+        if start_node_names is not None and start_node_types is not None:
+            raise ValueError(
+                "Cannot specify both `start_node_types` and `start_node_names`"
+            )
+
         g = self.kg_loader.load(triple_df=triple_df, directed=self.directed)
 
         if not self.edge_map:
-            self.edge_map = create_edge_map(
+            self.edge_map = utils.create_edge_map(
                 triple_df,
                 src_node_type_field=self.kg_loader.src_node_type_field,
                 target_node_type_field=self.kg_loader.target_node_type_field,
@@ -216,7 +228,7 @@ class SubgraphPipeline:
                 directed=self.directed,
             )
         if not self.replace_map:
-            self.replace_map = {k: v for k, v in self.edge_map.items() if len(v) > 1}
+            self.replace_map = utils.create_replace_map(self.edge_map)
 
         if not self.valid_node_pairs:
             self.valid_node_pairs = get_valid_node_pairs(
@@ -246,6 +258,8 @@ class SubgraphPipeline:
 
         if start_node_types is not None:
             kwargs["start_node_attrs"] = {"node_type": start_node_types}
+        elif start_node_names is not None:
+            kwargs["start_node_attrs"] = {"node_name": start_node_names}
 
         subgraph = SubgraphDataset(
             graph=g,
