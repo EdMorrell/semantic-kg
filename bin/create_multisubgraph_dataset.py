@@ -3,13 +3,16 @@ import yaml
 import random
 from pathlib import Path
 from typing import Optional
-from itertools import chain
 
 import numpy as np
 import pandas as pd
 
 from bin import DATASET_CONFIG_PATHS, DATASET_LOADERS, SubgraphDatasetConfig
-from semantic_kg.datasets import create_edge_map
+from semantic_kg.utils import (
+    create_edge_map,
+    create_replace_map,
+    get_start_nodes_from_replace_map,
+)
 from semantic_kg.generation import SubgraphPipeline
 from semantic_kg.perturbation import (
     GraphPerturber,
@@ -102,6 +105,7 @@ def _generate_dataset(
     save_path: Path,
     p_perturbation_range: Optional[tuple[float, float]] = None,
     start_node_types: Optional[list[str]] = None,
+    start_node_names: Optional[list[str]] = None,
 ) -> pd.DataFrame:
     pipeline = SubgraphPipeline(
         src_node_id_field=config.src_node_id_field,
@@ -124,6 +128,7 @@ def _generate_dataset(
         n_iter=n_iter,
         n_node_range=(min_nodes, max_nodes),
         start_node_types=start_node_types,
+        start_node_names=start_node_names,
         max_retries=n_iter
         * 1000,  # Needs to be really high as some perturbations only valid in rare instances  # noqa: E501
     )
@@ -178,11 +183,16 @@ def main(
                 config.edge_name_field,
                 config.directed_graph,
             )
-        replace_map = {k: v for k, v in edge_map.items() if len(v) > 1}
+        replace_map = create_replace_map(edge_map)
     else:
         replace_map = config.replace_map
 
-    replace_start_nodes = list(set(chain(*list(replace_map.keys()))))
+    replace_start_nodes = get_start_nodes_from_replace_map(
+        replace_map=replace_map,
+        triple_df=df,
+        edge_name_field=config.edge_name_field,
+        attr_field=config.src_node_name_field,
+    )
 
     edge_replacement_perturbation = EdgeReplacementPerturbation(
         replace_map=replace_map,
@@ -231,7 +241,7 @@ def main(
         if p_type == "edge_replacement":
             kwargs = {
                 "p_perturbation_range": (0.01, 0.1),
-                "start_node_types": replace_start_nodes,
+                "start_node_names": replace_start_nodes,
             }
         else:
             kwargs = {}
