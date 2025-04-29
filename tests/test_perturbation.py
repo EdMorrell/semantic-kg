@@ -175,7 +175,8 @@ class TestEdgeReplacementPerturbation:
         test_graph: nx.Graph,
     ) -> None:
         perturber = perturbation.EdgeReplacementPerturbation(
-            replace_map={("mock", "mock"): ["increase", "decrease"]}, directed=False
+            replace_map={"increase": ["decrease"], "decrease": ["increase"]},
+            directed=False,
         )
 
         p_graph = perturber.create(test_graph)
@@ -211,11 +212,10 @@ class TestEdgeReplacementPerturbation:
     ) -> None:
         modified_graph = test_graph.copy()
 
-        # Update both node attributes so the type is `disallowed`
-        nx.set_node_attributes(modified_graph, "disallowed", "node_type")
-
+        # `replace_map` set to contain edge-values not found in current graph
         perturber = perturbation.EdgeReplacementPerturbation(
-            replace_map={("mock", "mock"): ["increase", "decrease"]}, directed=False
+            replace_map={"elevate": ["reduce"], "reduce": ["elevate"]},
+            directed=False,
         )
 
         with pytest.raises(perturbation.NoValidEdgeError):
@@ -226,7 +226,8 @@ class TestEdgeReplacementPerturbation:
         test_graph: nx.Graph,
     ) -> None:
         perturber = perturbation.EdgeReplacementPerturbation(
-            replace_map={("mock", "mock"): ["increase", "decrease"]}, directed=True
+            replace_map={"increase": ["decrease"], "decrease": ["increase"]},
+            directed=True,
         )
         p_graph = perturber.create(test_graph)
         assert isinstance(p_graph, nx.DiGraph)
