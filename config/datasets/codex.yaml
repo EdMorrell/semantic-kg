@@ -8,3 +8,124 @@ target_node_id_field: tail
 target_node_type_field: tail_type
 target_node_name_field: tail_name
 directed_graph: true
+replace_map:
+  cast member:
+    - creator
+    - director
+  director:
+    - cast member
+    - creator
+  creator:
+    - cast member
+    - director
+  author:
+    - director
+    - cast member
+  headquarters location:
+    - capital
+  located in the administrative terroritorial entity:
+    - shares border with
+    - diplomatic relation
+  country:
+    - shares border with
+    - diplomatic relation
+  shares border with:
+    - located in the administrative terroritorial entity
+    - named after
+    - country
+    - diplomatic relation
+  diplomatic relation:
+    - located in the administrative terroritorial entity
+    - shares border with
+    - country
+    - part of
+  location of formation:
+    - headquarters location
+  country of origin:
+    - narrative location
+  chairperson:
+    - founded by
+  parent organization:
+    - founded by
+    - part of
+  airline hub:
+    - headquarters location
+  chief executive officer:
+    - founded by
+    - chairperson
+    - director
+  founded by:
+    - chairperson
+    - director
+    - chief executive officer
+  chairperson:
+    - founded by
+    - chief executive officer
+    - director
+  airline alliance:
+    - member of
+  narrative location:
+    - country of origin
+  architect:
+    - named after
+  capital:
+    - headquarters location
+  country of citizenship:
+    - place of burial
+    - place of birth
+    - place of death
+  residence:
+    - place of death
+    - place of birth
+    - place of burial
+  place of birth:
+    - place of death
+    - place of burial
+    - residence
+  place of death:
+    - place of birth
+    - place of burial
+    - residence
+  place of burial:
+    - place of birth
+    - place of death
+    - residence
+  child:
+    - sibling
+    - spouse
+    - unmarried partner
+    - influenced by
+  spouse:
+    - sibling
+    - influenced by
+    - child
+    - unmarried partner
+  sibling:
+    - child
+    - spouse
+    - unmarried partner
+    - influenced by
+  unmarried partner:
+    - sibling
+    - spouse
+    - influenced by
+    - child
+  educated at:
+    - employer
+  cause of death:
+    - medical condition
+    - health specialty
+  medical condition:
+    - cause of death
+    - health specialty
+  heath specialty:
+    - medical condition
+    - cause of death
+  member of political party:
+    - employer
+  publisher:
+    - record label
+    - employer
+  record label:
+    - publisher
+    - employer

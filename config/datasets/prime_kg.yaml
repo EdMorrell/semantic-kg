@@ -8,3 +8,35 @@ target_node_id_field: target_node_index
 target_node_type_field: target_node_type
 target_node_name_field: target_node_name
 directed_graph: false
+replace_map:
+  expression present:
+    - expression absent
+  expression absent:
+    - expression present
+  contraindication:
+    - indication
+    - off-label use
+  indication:
+    - contraindication
+    - off-label use
+  off-label use:
+    - contraindication
+    - indication
+  phenotype absent:
+    - phenotype present
+  phenotype present:
+    - phenotype absent
+  carrier:
+    - enzyme
+    - target
+  enzyme:
+    - carrier
+    - target
+    - transporter
+  target:
+    - carrier
+    - enzyme
+    - transporter
+  transporter:
+    - enzyme
+    - target

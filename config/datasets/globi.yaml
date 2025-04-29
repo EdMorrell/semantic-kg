@@ -8,3 +8,96 @@ target_node_id_field: targetTaxonId
 target_node_type_field: targetTaxonFamilyName
 target_node_name_field: targetTaxonName
 directed_graph: true
+replace_map:
+  parasiteOf:
+    - eats
+    - commensalistOf
+    - mutualistOf
+  hasHost:
+    - coOccursWith
+  adjacentTo:
+    - hasHost
+    - preysOn
+  coOccursWith:
+    - hasHost
+  visitsFlowersOf:
+    - pathogenOf
+  preysOn:
+    - livesNear
+  pollinates:
+    - eats
+    - visits
+  kills:
+    - coOccursWith
+    - pathogenOf
+  rootparasiteOf:
+    - adjacentTo
+    - livesNear
+    - eats
+    - commensalistOf
+    - mutualistOf
+  hasVector:
+    - pathogenOf
+  pathogenOf:
+    - visitsFlowersOf
+  mutualistOf:
+    - visits
+    - eats
+    - hasHost
+    - parasiteOf
+  livesInsideOf:
+    - eats
+    - adjacentTo
+  livesUnder:
+    - eats
+    - visitsFlowersOf
+    - visits
+    - pollinates
+  epiphyteOf:
+    - hasHabitat
+    - parasiteOf
+    - adjacentTo
+    - livesNear
+  inhabits:
+    - pathogenOf
+  ectoparasiteOf:
+    - eats
+    - commensalistOf
+    - mutualistOf
+  endoparasiteOf:
+    - commensalistOf
+    - mutualistOf
+  kleptoparasiteOf:
+    - eats
+    - coOccursWith
+    - commensalistOf
+    - mutualistOf
+  providesNutrientsFor:
+    - eats
+  hasDispersalVector:
+    - eats
+  endoparasitoidOf:
+    - eats
+  guestOf:
+    - eats
+    - coOccursWith
+    - preysOn
+    - visitsFlowersOf
+  livesNear:
+    - parasiteOf
+  hasRoost:
+    - pathogenOf
+    - preysOn
+    - hasHost
+    - eats
+  coRoostsWith:
+    - pathogenOf
+    - preysOn
+    - hasHost
+    - eats
+  ectoParasitoid:
+    - eats
+  allelopathOf:
+    - pathogenOf
+    - hasHost
+    - adjacentTo
