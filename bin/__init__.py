@@ -101,5 +101,5 @@ class SubgraphDatasetConfig(BaseModel):
     directed_graph: bool
 
     edge_map: Optional[EDGE_MAPPING_TYPE] = None
-    replace_map: Optional[EDGE_MAPPING_TYPE] = None
+    replace_map: Optional[dict[str, list[str]]] = None
     valid_node_pairs: Optional[list[tuple[str, str]]] = None

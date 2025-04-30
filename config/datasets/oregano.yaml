@@ -10,12 +10,11 @@ target_node_name_field: object_name
 directed_graph: true
 
 replace_map:
-  !!python/tuple ["COMPOUND", "ACTIVITY"]:
-    - increase_activity
+  increase_activity:
     - decrease_activity
-  !!python/tuple ["COMPOUND", "COMPOUND"]:
+  decrease_activity:
     - increase_activity
-    - decrease_activity
-  !!python/tuple ["COMPOUND", "EFFECT"]:
-    - increase_effect
+  increase_effect:
     - decrease_effect
+  decrease_effect:
+    - increase_effect

@@ -218,7 +218,7 @@ class EdgeDeletionPerturbation(BasePerturbation):
 class EdgeReplacementPerturbation(BasePerturbation):
     def __init__(
         self,
-        replace_map: dict[tuple[str, str], list[str]],
+        replace_map: dict[str, list[str]],
         directed: bool = True,
         node_type_field: str = "node_type",
         edge_name_field: str = "edge_name",
@@ -262,19 +262,16 @@ class EdgeReplacementPerturbation(BasePerturbation):
             if not self.directed:
                 node_pair = tuple(sorted(node_pair))
 
-            if node_pair in self.replace_map and edge not in self.memory:
+            if edge not in self.memory:
                 current_value = graph[edge[0]][edge[1]][self.edge_name_field]
 
-                if current_value not in self.replace_map[node_pair]:
+                if current_value not in self.replace_map:
                     raise NoValidEdgeError(
                         "`replace_map` does not contain an alternative value"
                         f" for {current_value}"
                     )
 
-                alternative_values = [
-                    v for v in self.replace_map[node_pair] if v != current_value
-                ]
-                new_value = random.choice(alternative_values)
+                new_value = random.choice(self.replace_map[current_value])
 
                 edge_data = {self.edge_name_field: new_value}
 
@@ -657,7 +654,7 @@ class GraphPerturber:
 def build_perturber(
     edge_map: dict[tuple[str, str], list[str]],
     valid_node_pairs: list[tuple[str, str]],
-    replace_map: dict[tuple[str, str], list[str]],
+    replace_map: dict[str, list[str]],
     directed: bool,
     edge_addition: bool = True,
     edge_deletion: bool = True,

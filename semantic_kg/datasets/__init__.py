@@ -123,42 +123,6 @@ class KGLoader:
         return g
 
 
-def create_edge_map(
-    triple_df: pd.DataFrame,
-    src_node_type_field: str,
-    target_node_type_field: str,
-    edge_name_field: str,
-    directed: bool = True,
-) -> dict[tuple[str, str], list[str]]:
-    """Creates a map of node-types to edge-types
-
-    Uses the existing dataset to characterise what types of edge-types
-    are shared between different node-types. Can be used for defining
-    acceptable edge-replacements
-
-    Returns
-    -------
-    dict[tuple[str, str], list[str]]
-        A dictionary denoting each node-type pair and all corresponding
-        edge-types
-    """
-    triple_df["node_types"] = list(
-        triple_df[[src_node_type_field, target_node_type_field]].itertuples(
-            index=False, name=None
-        )
-    )
-    if not directed:
-        triple_df["node_types"] = triple_df["node_types"].apply(
-            lambda x: tuple(sorted(x))
-        )
-    return (
-        triple_df[["node_types", edge_name_field]]
-        .groupby("node_types")
-        .agg(lambda x: list(x.unique()))[edge_name_field]
-        .to_dict()
-    )
-
-
 def get_valid_node_pairs(
     triple_df: pd.DataFrame, src_node_type_field: str, target_node_type_field: str
 ) -> list[tuple[str, str]]:
