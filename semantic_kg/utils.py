@@ -65,6 +65,10 @@ def load_subgraph_dataset(fpath: Path | str) -> pd.DataFrame:
         subgraph_dataset[col] = subgraph_dataset[col].apply(
             lambda x: re.sub(r"np\.str_\(\'(.+?)\'\)", r"'\1'", x)
         )
+        # Removes any np.int64 formatted string
+        subgraph_dataset[col] = subgraph_dataset[col].apply(
+            lambda x: re.sub(r"np\.int64\((.+?)\)", r"\1", x)
+        )
         subgraph_dataset[col] = subgraph_dataset[col].apply(ast.literal_eval)
 
     return subgraph_dataset
