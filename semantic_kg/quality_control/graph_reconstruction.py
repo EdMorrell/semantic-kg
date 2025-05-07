@@ -42,8 +42,16 @@ class NLPNodeEquality:
 
         attr = "lemma_" if self.lemmatize else "text"
 
-        tokens1 = [getattr(token, attr) for token in doc1 if not token.is_stop]
-        tokens2 = [getattr(token, attr) for token in doc2 if not token.is_stop]
+        tokens1 = [
+            getattr(token, attr)
+            for token in doc1
+            if not token.is_stop and not token.is_space
+        ]
+        tokens2 = [
+            getattr(token, attr)
+            for token in doc2
+            if not token.is_stop and not token.is_space
+        ]
 
         if self.preserve_order:
             return tokens1 == tokens2

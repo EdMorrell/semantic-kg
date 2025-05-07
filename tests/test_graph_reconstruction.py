@@ -153,3 +153,11 @@ class TestKGReconstructionCompare:
             False,
             False,
         ]
+
+
+def test_node_equality_whitespace() -> None:
+    """Tests whitespace doesn't cause inequality"""
+    node_equality = graph_reconstruction.NLPNodeEquality(
+        lemmatize=True, preserve_order=True
+    )
+    assert node_equality(" the hypertensive activities ", "the hypertensive activities")
