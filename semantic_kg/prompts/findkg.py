@@ -1,5 +1,23 @@
 NODE_TYPES = "['ORG/GOV', 'ORG', 'PERSON', 'SECTOR', 'ORG/REG', 'EVENT', 'ECON_INDICATOR', 'FIN_INSTRUMENT', 'COMP', 'GPE', 'CONCEPT', 'PRODUCT']"
-EDGE_TYPES = "['Control', 'Impact', 'Participates_In', 'Relate_To', 'Operate_In', 'Positive_Impact_On', 'Raise', 'Announce', 'Introduce', 'Negative_Impact_On', 'Is_Member_Of', 'Decrease', 'Has', 'Produce', 'Invests_In']"
+EDGE_TYPES = """['Control', 'Impact', 'Participates_In', 'Relate_To', 'Operate_In', 'Positive_Impact_On', 'Raise', 'Announce', 'Introduce', 'Negative_Impact_On', 'Is_Member_Of', 'Decrease', 'Has', 'Produce', 'Invests_In']"
+
+Relation Definitions:
+- Has: Indicates ownership or possession, often of assets or subsidiaries in a financial context.
+- Announce: Refers to the formal public declaration of a financial event, product launch, or strategic move.
+- Operate_In: Describes the geographical market in which a business entity conducts its operations.
+- Introduce: Denotes the first-time introduction of a financial instrument, product, or policy to the market.
+- Produce: Specifies the entity responsible for creating a particular product, often in a manufacturing or financial product context.
+- Control: Implies authority or regulatory power over monetary policy, financial instruments, or market conditions.
+- Participates_In: Indicates active involvement in an event that has financial or economic implications.
+- Impact: Signifies a notable effect, either positive or negative, on market trends, financial conditions, or economic indicators.
+- Positive_Impact_On: Highlights a beneficial effect on financial markets, economic indicators, or business performance.
+- Negative_Impact_On: Underlines a detrimental effect on financial markets, economic indicators, or business performance.
+- Relate_To: Points out a connection or correlation with a financial concept, sector, or market trend.
+- Is_Member_Of: Denotes membership in a trade group, economic union, or financial consortium.
+- Invests_In: Specifies an allocation of capital into a financial instrument, sector, or business entity.
+- Raise: Indicates an increase, often referring to capital, interest rates, or production levels in a financial context.
+- Decrease: Indicates a reduction, often referring to capital, interest rates, or production levels in a financial context.
+"""
 
 # flake8: noqa: E501
 
@@ -47,6 +65,23 @@ For example for the node `{{"name": "Federal Reserve System"}}`:
     'The "Federal Reserve System"...' is **not** allowed
     '... is controlled by the "Federal Reserve System"' is **not** allowed
     '... is controlled by the 'Federal Reserve System' is **not** allowed
+
+Relationship Definitions and Examples:
+- Has: Indicates ownership or possession, often of assets or subsidiaries in a financial context. Example: Google Has Android.
+- Announce: Refers to the formal public declaration of a financial event, product launch, or strategic move. Example: Apple Announces iPhone 13.
+- Operate_In: Describes the geographical market in which a business entity conducts its operations. Example: Tesla Operates In China.
+- Introduce: Denotes the first-time introduction of a financial instrument, product, or policy to the market. Example: Samsung Introduces Foldable Screen.
+- Produce: Specifies the entity responsible for creating a particular product, often in a manufacturing or financial product context. Example: Pfizer Produces Covid-19 Vaccine.
+- Control: Implies authority or regulatory power over monetary policy, financial instruments, or market conditions. Example: Federal Reserve Controls Interest Rates.
+- Participates_In: Indicates active involvement in an event that has financial or economic implications. Example: United States Participates In G20 Summit.
+- Impact: Signifies a notable effect, either positive or negative, on market trends, financial conditions, or economic indicators. Example: Brexit Impacts European Union.
+- Positive_Impact_On: Highlights a beneficial effect on financial markets, economic indicators, or business performance. Example: Solar Energy Positive Impact On ESG Ratings.
+- Negative_Impact_On: Underlines a detrimental effect on financial markets, economic indicators, or business performance. Example: Covid-19 Negative Impact On Tourism Sector.
+- Relate_To: Points out a connection or correlation with a financial concept, sector, or market trend. Example: AI Relates To FinTech Sector.
+- Is_Member_Of: Denotes membership in a trade group, economic union, or financial consortium. Example: Germany Is Member Of EU.
+- Invests_In: Specifies an allocation of capital into a financial instrument, sector, or business entity. Example: Warren Buffett Invests In Apple.
+- Raise: Indicates an increase, often referring to capital, interest rates, or production levels in a financial context. Example: OPEC Raises Oil Production.
+- Decrease: Indicates a reduction, often referring to capital, interest rates, or production levels in a financial context. Example: Federal Reserve Decreases Interest Rates.
 """
 
 entity_extractor_fewshot_examples = """Example input: "Italian debt is related to policies of the European Central Bank. This debt has an impact on the Italian Government in addition to investors. Investors may also subsequently impact the value of Yuan."
