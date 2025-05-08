@@ -1,4 +1,4 @@
-entity_extractor_system_prompt_template = """You will be provided with a statement describing the relationship between various biological entities.
+entity_extractor_system_prompt_template = """You will be provided with a statement describing the relationship between various entities.
 
 The different entities described are of the following types: {node_types}.
 
@@ -13,7 +13,7 @@ For example:
 """
 
 
-kg_extractor_system_prompt_template = """You will be provided with a text describing the relationship between various biological entities
+kg_extractor_system_prompt_template = """You will be provided with a text describing the relationship between various entities
 
 You will also be provided with a list of entities contained within that statement.
 
@@ -28,7 +28,7 @@ Examples:
 """
 
 
-kg_extractor_system_prompt_template_directed = """You will be provided with a text describing the directed relationships between various biological entities
+kg_extractor_system_prompt_template_directed = """You will be provided with a text describing the directed relationships between various entities
 
 You will also be provided with a list of entities contained within that statement.
 
@@ -44,7 +44,7 @@ Examples:
 
 """
 
-kg_extractor_system_prompt_template_directed_valid_directions = """You will be provided with a text describing the directed relationships between various biological entities
+kg_extractor_system_prompt_template_directed_valid_directions = """You will be provided with a text describing the directed relationships between various entities
 
 You will also be provided with a list of entities contained within that statement.
 
@@ -64,7 +64,7 @@ Examples:
 
 
 # NOTE: Not recommended to use as 2-step method appeared better in practice
-single_step_kg_extractor_system_prompt_template = """You will be provided with a statement describing the relationship between various biological entities.
+single_step_kg_extractor_system_prompt_template = """You will be provided with a statement describing the relationship between various entities.
 
 The different entities described are of the following types: {node_types}.
 
