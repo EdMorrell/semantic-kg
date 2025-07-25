@@ -27,7 +27,12 @@ DEFAULT_EXCEPTION_MAP = {
         openai.RateLimitError,
         openai.APITimeoutError,
         openai.APIConnectionError,
-    ]
+    ],
+    "gemini": [
+        openai.RateLimitError,
+        openai.APITimeoutError,
+        openai.APIConnectionError,
+    ],
 }
 
 
@@ -429,7 +434,7 @@ class NLGenerationPipeline:
         total_responses = 0
         retries = 0
         while total_responses < self.n_responses and retries < self.max_quality_retries:
-            _seed = prng.randint(0, int(1e12))
+            _seed = prng.randint(0, int(1e8))
             prompt = self.prompt_template.format(triples=triples)
             response = self.request_func(
                 prompt, 1, max_tokens=self.max_tokens, seed=_seed
