@@ -16,7 +16,7 @@ except FileNotFoundError:
         "Please run `make download_dataset DATASET_NAME=codex` to use this dataset."
     )
 try:
-    from semantic_kg.prompts import globi
+    from semantic_kg.prompts import codex
 except FileNotFoundError:
     warnings.warn(
         "Globi data currently missing. "

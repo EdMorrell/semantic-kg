@@ -14,3 +14,18 @@ wheels/
 
 # Graph outputs
 outputs/
+
+# Large dataset files
+datasets/prime_kg/prime_kg_dataset.csv
+datasets/prime_kg/edges.csv
+datasets/codex/triples/codex-l/train.txt
+datasets/codex/entities/en/entities.json
+datasets/oregano/TARGET.tsv
+datasets/oregano/oreganov2.1_metadata_complete.ttl
+datasets/oregano/OREGANO_V2.1.tsv
+datasets/globi/interactions.csv.gz
+
+# Large files in general (>10MB)
+*.csv
+!**/multisubgraph_dataset_small.csv
+!**/cab093d9ac6a81c4a868ff098dc4a3bd.csv

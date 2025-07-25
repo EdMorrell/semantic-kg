@@ -1,11 +1,12 @@
 import os
+import time
 from pathlib import Path
 from typing import Optional
 
 import openai
-import google.auth
-import google.auth.transport.requests
-from google.auth.exceptions import DefaultCredentialsError
+# import google.auth
+# import google.auth.transport.requests
+# from google.auth.exceptions import DefaultCredentialsError
 from openai import AzureOpenAI, OpenAI
 
 from semantic_kg.models.base import BaseTextGeneration
@@ -56,6 +57,21 @@ def create_openai_client(cache_dir: Optional[Path] = None):
     return OpenAI(
         api_key=get_gcloud_auth_token().token,
         base_url=os.environ["OPENAI_API_BASE"],
+        http_client=client,
+    )
+
+
+def create_openrouter_client(cache_dir: Optional[Path] = None):
+    """Sets up the OpenRouter client for Gemini"""
+    # Creates a hishel object to cache responses
+    if cache_dir:
+        client = get_hishel_http_client(cache_dir)
+    else:
+        client = None
+
+    return OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.environ.get("OPENROUTER_API_KEY", ""),
         http_client=client,
     )
 
@@ -180,7 +196,7 @@ class GeminiTextGeneration(BaseTextGeneration):
         self.structured_output = structured_output
         self.cache_dir = cache_dir
 
-        self.client = create_openai_client(cache_dir)
+        self.client = create_openrouter_client(cache_dir)
 
     def _get_response(
         self,
@@ -190,8 +206,12 @@ class GeminiTextGeneration(BaseTextGeneration):
         **kwargs,
     ) -> dict:
         return self.client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "http://localhost"),
+                "X-Title": os.environ.get("OPENROUTER_TITLE", "Semantic KG"),
+            },
             model=self.model_id,
-            temperature=1,
+            temperature=self.temperature,
             max_tokens=max_tokens,
             n=n_responses,
             messages=messages,  # type: ignore
@@ -246,24 +266,19 @@ class GeminiTextGeneration(BaseTextGeneration):
                 n_responses=n_responses,
                 **kwargs,
             )
-        except DefaultCredentialsError or openai.error.AuthenticationError:
-            # Refresh the client if credentials are expired
-            self.client = create_openai_client(cache_dir=self.cache_dir)
-            response = self._get_response(
-                messages=messages,
-                max_tokens=max_tokens,
-                n_responses=n_responses,
-                **kwargs,
-            )
-
-        response = self.client.chat.completions.create(
-            model=self.model_id,
-            temperature=1,
-            max_tokens=max_tokens,
-            n=n_responses,
-            messages=messages,  # type: ignore
-            **kwargs,
-        )
+        except Exception as e:
+            # Handle rate limiting and other errors
+            if "429" in str(e) or "rate" in str(e).lower():
+                print(f"Rate limit hit. Waiting 30 seconds before retry")
+                time.sleep(30)
+                response = self._get_response(
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    n_responses=n_responses,
+                    **kwargs,
+                )
+            else:
+                raise e
         return [choice.message.content for choice in response.choices]
 
 
@@ -272,7 +287,7 @@ if __name__ == "__main__":
 
     load_dotenv()
     model = GeminiTextGeneration(
-        model_id="google/gemini-1.5-flash",
+        model_id="google/gemini-2.5-flash",
         structured_output=True,
     )
     response = model.generate(

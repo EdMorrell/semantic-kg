@@ -1,0 +1,79 @@
+ID_OREGANO:78	NAME_DRUGBANK
+ACTIVITY:1	 the anticoagulant activities 
+ACTIVITY:10	 the hepatotoxic activities 
+ACTIVITY:11	 the vasoconstricting activities 
+ACTIVITY:12	 the hypoglycemic activities 
+ACTIVITY:13	 the neuromuscular blocking activities 
+ACTIVITY:14	 the antihypertensive activities 
+ACTIVITY:15	 the hypertensive activities 
+ACTIVITY:16	 the gastrointestinal motility reducing activities 
+ACTIVITY:17	 the hypotensive activities 
+ACTIVITY:18	 the orthostatic hypotensive activities 
+ACTIVITY:19	 the central nervous system depressant (CNS depressant) activities 
+ACTIVITY:2	 the thrombogenic activities 
+ACTIVITY:20	 the sedative activities 
+ACTIVITY:21	 the antiplatelet activities 
+ACTIVITY:22	 the cardiodepressant activities 
+ACTIVITY:23	 the diuretic activities 
+ACTIVITY:24	 the fluid retaining and vasopressor activities 
+ACTIVITY:25	 the nephrotoxic activities 
+ACTIVITY:26	 the bradycardic activities 
+ACTIVITY:27	 the neurotoxic activities 
+ACTIVITY:28	 the hyperkalemic activities 
+ACTIVITY:29	 the uterotonic activities 
+ACTIVITY:3	 the immunosuppressive activities 
+ACTIVITY:30	 the hypercalcemic activities 
+ACTIVITY:31	 the photosensitizing activities 
+ACTIVITY:32	 the serotonergic activities 
+ACTIVITY:33	 the neuroexcitatory activities 
+ACTIVITY:34	 the Pseudotumor Cerebri activities 
+ACTIVITY:35	 the myopathic rhabdomyolysis activities 
+ACTIVITY:36	 the hypolipidaemic activities 
+ACTIVITY:37	 the vasodilatory activities 
+ACTIVITY:38	 the hypokalemic activities 
+ACTIVITY:39	 the analgesic activities 
+ACTIVITY:4	 the neutropenic activities 
+ACTIVITY:40	 the sedative and stimulatory activities 
+ACTIVITY:41	 the stimulatory activities 
+ACTIVITY:42	 the atrioventricular blocking (AV block) and tachycardic activities 
+ACTIVITY:43	 the anticholinergic activities 
+ACTIVITY:44	 the Change in thyroid function activities 
+ACTIVITY:45	 the bronchoconstrictory activities 
+ACTIVITY:46	 the arrhythmogenic activities 
+ACTIVITY:47	 the QTc-prolonging and arrhythmogenic activities 
+ACTIVITY:48	 the skeletal muscle relaxing activities 
+ACTIVITY:49	 the antipsychotic activities 
+ACTIVITY:5	 the QTc-prolonging activities 
+ACTIVITY:50	 the smooth muscle relaxing activities 
+ACTIVITY:51	 the bradycardic, atrioventricular blocking (AV block), and arrhythmogenic activities 
+ACTIVITY:52	 the vasopressor activities 
+ACTIVITY:53	 the hypertensive and vasoconstricting activities 
+ACTIVITY:54	 the tachycardic activities 
+ACTIVITY:55	 the sympathomimetic activities 
+ACTIVITY:56	 the bronchodilatory activities 
+ACTIVITY:57	 the hypotensive and Electrolyte Disturbance activities 
+ACTIVITY:58	 the hypotensive and central nervous system depressant (CNS depressant) activities 
+ACTIVITY:59	 the orthostatic hypotensive, hypotensive, and antihypertensive activities 
+ACTIVITY:6	 effectiveness 
+ACTIVITY:60	 the arrhythmogenic and cardiotoxic activities 
+ACTIVITY:61	 the atrioventricular blocking (AV block) activities 
+ACTIVITY:62	 the ototoxic activities 
+ACTIVITY:63	 the atrioventricular blocking (AV block) and arrhythmogenic activities 
+ACTIVITY:64	 the Decreased alertness activities 
+ACTIVITY:65	 the dermatologic adverse activities 
+ACTIVITY:66	 the teratogenic activities 
+ACTIVITY:67	 the serotonergic and central nervous system depressant (CNS depressant) activities 
+ACTIVITY:68	 the opioid antagonism activities 
+ACTIVITY:69	 the nephrotoxic and ototoxic activities 
+ACTIVITY:7	 the excretion rate 
+ACTIVITY:70	 the alpha-adrenergic activities 
+ACTIVITY:71	 the orthostatic hypotensive and hypotensive activities 
+ACTIVITY:72	 the hypotensive and vasodilatory activities 
+ACTIVITY:73	 the pancreatitis activities 
+ACTIVITY:74	 the constipating activities 
+ACTIVITY:75	 the hepatotoxic and myelosuppressive activities 
+ACTIVITY:76	 the nephrotoxic and neuromuscular blocking activities 
+ACTIVITY:77	 the hypothyroid activities 
+ACTIVITY:78	 the hypotensive and hyperkalemic activities 
+ACTIVITY:8	 the cardiotoxic activities 
+ACTIVITY:9	 the myelosuppressive activities 

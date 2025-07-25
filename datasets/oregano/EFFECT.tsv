@@ -1,0 +1,172 @@
+ID_OREGANO:171	NAME_DRUGBANK
+EFFECT:1	 bleeding and hemorrhage 
+EFFECT:10	 infection and neutropenia 
+EFFECT:100	 constipation 
+EFFECT:101	 QTc prolongation and serotonin syndrome 
+EFFECT:102	 weight gain and edema formation 
+EFFECT:103	 thrombocytopenia 
+EFFECT:104	 ventricular arrhythmias and torsade de pointes 
+EFFECT:105	 QTc prolongation and ventricular arrhythmias 
+EFFECT:106	 QTc prolongation and hypotension 
+EFFECT:107	 hypotension and priapism 
+EFFECT:108	 hypotension and syncope 
+EFFECT:109	 QTc prolongation, torsade de pointes, hypokalemia, hypomagnesemia, and cardiac arrest 
+EFFECT:11	 myelosuppression 
+EFFECT:110	 torsade de pointes 
+EFFECT:111	 drowsiness and CNS depression 
+EFFECT:112	 Tachycardia and drowsiness 
+EFFECT:113	 urinary retention, reduced gastrointestinal motility, and constipation 
+EFFECT:114	 ototoxicity and nephrotoxicity 
+EFFECT:115	 ototoxicity 
+EFFECT:116	 vasospastic reactions 
+EFFECT:117	 hyperbilirubinemia 
+EFFECT:118	 myocardial depression 
+EFFECT:119	 hypertension and Tachycardia 
+EFFECT:12	 neutropenia 
+EFFECT:120	 granulocytopenia 
+EFFECT:121	 hypotension, hyperglycemia, and hyperuricemia 
+EFFECT:122	 orthostatic hypotension 
+EFFECT:123	 bleeding and gastrointestinal bleeding 
+EFFECT:124	 bleeding, nephrotoxicity, and gastrointestinal bleeding 
+EFFECT:125	 metabolic acidosis 
+EFFECT:126	 congestive heart failure, bleeding, hypotension, and Tachycardia 
+EFFECT:127	 somnolence and peripheral neuropathy 
+EFFECT:128	 Anticonvulsant Toxicity 
+EFFECT:129	 osteomalacia 
+EFFECT:13	 QTc prolongation 
+EFFECT:130	 liver enzyme elevations 
+EFFECT:131	 sinus node depression 
+EFFECT:132	 generalized seizure and bradycardia 
+EFFECT:133	 gastrointestinal bleeding and gastrointestinal ulceration 
+EFFECT:134	 hypotension and CNS depression 
+EFFECT:135	 hypercoagulability 
+EFFECT:136	 bronchospasm, shortness 
+EFFECT:137	 gastrointestinal bleeding and thrombocytopenia 
+EFFECT:138	 Cardiac Arrhythmia and CNS stimulation 
+EFFECT:139	 cardiac arrest 
+EFFECT:14	 myopathy, rhabdomyolysis, and myoglobinuria 
+EFFECT:140	 QTc prolongation and torsade de pointes 
+EFFECT:141	 extrapyramidal symptoms and CNS depression 
+EFFECT:142	 cardiovascular complications 
+EFFECT:143	 hypotension and hyperkalemia 
+EFFECT:144	 death 
+EFFECT:145	 jaw osteonecrosis 
+EFFECT:146	 hypotension and sinus node depression 
+EFFECT:147	 hyperkalemia and metabolic acidosis 
+EFFECT:148	 visual accommodation disturbances 
+EFFECT:149	 rash, hypersensitivity reaction, Stevens-Johnson syndrome, and Cutaneous drug reaction 
+EFFECT:15	 bradycardia 
+EFFECT:150	 Stevens-Johnson syndrome 
+EFFECT:151	 cytopenia 
+EFFECT:152	 sedation and extrapyramidal symptoms 
+EFFECT:153	 serotonin syndrome and opioid toxicity 
+EFFECT:154	 QTc prolongation, ventricular arrhythmias, torsade de pointes, and convulsion 
+EFFECT:155	 torsade de pointes and Cardiac Arrhythmia 
+EFFECT:156	 seizure and encephalopathy 
+EFFECT:157	 leukopenia 
+EFFECT:158	 rash 
+EFFECT:159	 QTc prolongation, torsade de pointes, and cardiotoxicity 
+EFFECT:16	 cardiotoxicity 
+EFFECT:160	 QTc prolongation and Cardiac Arrhythmia 
+EFFECT:161	 ventricular arrhythmias 
+EFFECT:162	 intraocular pressure 
+EFFECT:163	 increased serum creatinine 
+EFFECT:164	 psychotic reaction 
+EFFECT:165	 QTc prolongation, torsade de pointes, and Cardiac Arrhythmia 
+EFFECT:166	 hemorrhage, gastrointestinal bleeding, and gastrointestinal ulceration 
+EFFECT:167	 generalized seizure 
+EFFECT:168	 hemorrhagic cystitis 
+EFFECT:169	 tumor lysis syndrome 
+EFFECT:17	 neutropenia and thrombocytopenia 
+EFFECT:170	 serotonin syndrome and neuroleptic malignant syndrome 
+EFFECT:171	 mucosal ulceration and ischemic colitis 
+EFFECT:18	 angioedema 
+EFFECT:19	 pulmonary toxicity 
+EFFECT:2	 gastrointestinal bleeding 
+EFFECT:20	 thromboembolism 
+EFFECT:21	 hypocalcemia 
+EFFECT:22	 Cardiac Arrhythmia 
+EFFECT:23	 anemia 
+EFFECT:24	 peripheral neuropathy 
+EFFECT:25	 liver damage 
+EFFECT:26	 confusion, irritability, and sleep disorders 
+EFFECT:27	 hypoglycemia 
+EFFECT:28	 congestive heart failure 
+EFFECT:29	 hyperglycemia 
+EFFECT:3	 bleeding and bruising 
+EFFECT:30	 hyponatremia 
+EFFECT:31	 hypertension 
+EFFECT:32	 hyponatremia and water intoxication 
+EFFECT:33	 hypertension, hyponatremia, and water intoxication 
+EFFECT:34	 orthostatic hypotension and syncope 
+EFFECT:35	 hypotension and orthostatic hypotension 
+EFFECT:36	 hypotension 
+EFFECT:37	 respiratory depression 
+EFFECT:38	 CNS depression 
+EFFECT:39	 sedation 
+EFFECT:4	 bleeding 
+EFFECT:40	 hypotension, sedation, death, somnolence, and respiratory depression 
+EFFECT:41	 neuropsychiatric effects 
+EFFECT:42	 bleeding and thrombocytopenia 
+EFFECT:43	 water intoxication 
+EFFECT:44	 myopathy 
+EFFECT:45	 increased transaminases 
+EFFECT:46	 neuromuscular blockade 
+EFFECT:47	 myopathy and weakness 
+EFFECT:48	 nephrotoxicity 
+EFFECT:49	 renal failure 
+EFFECT:5	 adverse effects 
+EFFECT:50	 Hypertrichosis 
+EFFECT:51	 hyperkalemia 
+EFFECT:52	 renal failure and hypertension 
+EFFECT:53	 nephrotoxicity and hypocalcemia 
+EFFECT:54	 seizure 
+EFFECT:55	 gouty arthritis 
+EFFECT:56	 hypotension, bradycardia, and Cardiac Arrhythmia 
+EFFECT:57	 jaw osteonecrosis and anti-angiogenesis 
+EFFECT:58	 Cardiovascular Impairment 
+EFFECT:59	 ventricular arrhythmias and Cardiac Arrhythmia 
+EFFECT:6	 hemorrhage 
+EFFECT:60	 hypercalcemia 
+EFFECT:61	 hypokalemia 
+EFFECT:62	 serotonin syndrome 
+EFFECT:63	 serotonin syndrome and hypomania 
+EFFECT:64	 gastrointestinal bleeding and peptic ulcer 
+EFFECT:65	 renal failure, hyperkalemia, and hypertension 
+EFFECT:66	 gastrointestinal irritation 
+EFFECT:67	 pseudotumor cerebri 
+EFFECT:68	 cytotoxicity 
+EFFECT:69	 rhabdomyolysis, myoglobinuria, and elevated creatine kinase (CPK) 
+EFFECT:7	 Thrombosis 
+EFFECT:70	 myopathy and rhabdomyolysis 
+EFFECT:71	 increased glucose 
+EFFECT:72	 rhabdomyolysis 
+EFFECT:73	 extrapyramidal symptoms 
+EFFECT:74	 hypotension, hyperkalemia, and reduced intravascular volume 
+EFFECT:75	 renal failure, hypotension, and hyperkalemia 
+EFFECT:76	 renal failure and hypotension 
+EFFECT:77	 orthostatic hypotension and dizziness 
+EFFECT:78	 hypotension, hyperkalemia, and nephrotoxicity 
+EFFECT:79	 myelosuppression, anemia, and severe leukopenia 
+EFFECT:8	 methemoglobinemia 
+EFFECT:80	 hypotension, nitritoid reactions, facial flushing, nausea, and vomiting 
+EFFECT:81	 lactic acidosis 
+EFFECT:82	 gastrointestinal ulceration and gastrointestinal irritation 
+EFFECT:83	 ulceration 
+EFFECT:84	 tendinopathy 
+EFFECT:85	 fluid retention 
+EFFECT:86	 edema formation 
+EFFECT:87	 electrolyte imbalance 
+EFFECT:88	 CNS depression and hypotonia 
+EFFECT:89	 hyperkinetic symptoms 
+EFFECT:9	 infection 
+EFFECT:90	 Tachycardia 
+EFFECT:91	 sedation and somnolence 
+EFFECT:92	 congestive heart failure and hypotension 
+EFFECT:93	 hypersensitivity reaction 
+EFFECT:94	 hypertension and tardive dyskinesia 
+EFFECT:95	 serotonin syndrome and seizure 
+EFFECT:96	 urinary retention 
+EFFECT:97	 gastrointestinal ulceration 
+EFFECT:98	 reduced gastrointestinal motility 
+EFFECT:99	 hyperthermia and oligohydrosis 
