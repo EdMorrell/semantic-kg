@@ -1,9 +1,9 @@
 dataset_name: codex
 dataset_path: datasets/codex/multisubgraph_dataset_small.csv
 response_model_config:
-  model_name: gemini
+  model_name: openai
   params:
-    model_id: google/gemini-1.5-flash
+    model_id: gpt-4-32k
     temperature: 1.0
     cache_dir: outputs/responses/
 scorer_model_config:
